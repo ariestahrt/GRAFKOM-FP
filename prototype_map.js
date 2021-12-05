@@ -2,6 +2,8 @@ import * as THREE from 'https://threejsfundamentals.org/threejs/resources/threej
 import {OrbitControls} from 'https://threejsfundamentals.org/threejs/resources/threejs/r132/examples/jsm/controls/OrbitControls.js';
 import {GUI} from 'https://threejsfundamentals.org/threejs/../3rdparty/dat.gui.module.js';
 
+// console.log = () => {}
+
 class MinMaxGUIHelper {
     constructor(obj, minProp, maxProp, minDif) {
         this.obj = obj;
@@ -27,6 +29,12 @@ class MinMaxGUIHelper {
         this.obj[this.maxProp] = v;
         this.min = this.min;  // this will call the min setter
     }
+}
+
+function randomBetween(min,max){
+    let random = (Math.random()*(max-min+1)+min);
+    if (random > max){ return max-1}
+    else { return random}
 }
 
 function animate () {
@@ -248,15 +256,15 @@ function animate () {
         obj.bawah_rightback.position.set(30,0,-30);
 
         
-        scene.add(obj.atas_leftfront);
-        scene.add(obj.atas_rightfront);
-        scene.add(obj.atas_leftback);
-        scene.add(obj.atas_rightback);
+        // scene.add(obj.atas_leftfront);
+        // scene.add(obj.atas_rightfront);
+        // scene.add(obj.atas_leftback);
+        // scene.add(obj.atas_rightback);
 
-        scene.add(obj.bawah_leftfront);
-        scene.add(obj.bawah_rightfront);
-        scene.add(obj.bawah_leftback);
-        scene.add(obj.bawah_rightback);
+        // scene.add(obj.bawah_leftfront);
+        // scene.add(obj.bawah_rightfront);
+        // scene.add(obj.bawah_leftback);
+        // scene.add(obj.bawah_rightback);
     }
     
     // Lantai-nya
@@ -281,45 +289,138 @@ function animate () {
         scene.add(mesh);
     }
 
-    // Kotak di tengah
-    {
-        const geometry = new THREE.BoxGeometry(10, 1, 200);
-        const color = generateRandomColor();
-        const material = new THREE.MeshPhongMaterial({color});
-        const obj = new THREE.Mesh(geometry, material);
-                
-        obj.position.set(0,0,0);
-        obj.name = "KOTAK_TENGAH";
-        
-        scene.add(obj);
-        // console.log(scene.getObjectByName("KOTAK_TENGAH", true).position.x);
+    const makeTiles = (x_adjustment, y_adjustment, z_adjustment) => {
+        let this_obj = [];
+        // Tiles Factory
+        {
+            const geometry = new THREE.BoxGeometry(15, 1, 50);
+            const material = new THREE.MeshPhongMaterial({color: 0x313A42 });
+            const obj = new THREE.Mesh(geometry, material);
+                    
+            obj.position.set(0 + x_adjustment,0 + y_adjustment,0 + z_adjustment);
+            obj.name = "KOTAK";
+            
+            this_obj.push(obj);
+            scene.add(obj);
+            // Buat stik di kanan
+            {
+                const geometry = new THREE.BoxGeometry(1, 0.5, 50);
+                const material = new THREE.MeshPhongMaterial({color: 0xC6B9AE});
+                const obj = new THREE.Mesh(geometry, material);
+                        
+                obj.position.set(0+7.5/2 + x_adjustment,1+0.5 + y_adjustment,0 + z_adjustment);
+                obj.name = "STIK_KANAN";
+                this_obj.push(obj);
+                scene.add(obj);
+            }
+            // Buat stik di kiri
+            {
+                const geometry = new THREE.BoxGeometry(1, 0.5, 50);
+                const material = new THREE.MeshPhongMaterial({color: 0xC6B9AE});
+                const obj = new THREE.Mesh(geometry, material);
+                        
+                obj.position.set(0 - 7.5/2 + x_adjustment,1+0.5+ y_adjustment,0+ z_adjustment);
+                obj.name = "STIK_KIRI";
+                this_obj.push(obj);
+                scene.add(obj);
+            }
+            // Buat rel2nya
+            for(let i=-2; i<3; i++){
+                {
+                    const geometry = new THREE.BoxGeometry(12, 0.5, 1);
+                    // const color = generateRandomColor();
+                    const material = new THREE.MeshPhongMaterial({color:0x7C634F});
+                    const obj = new THREE.Mesh(geometry, material);
+                            
+                    obj.position.set(0 + x_adjustment,1 + y_adjustment,i*10 + z_adjustment);
+                    obj.name = "BAWAHAN_REL";
+                    this_obj.push(obj);
+                    scene.add(obj);
+                }
+            }
+        }
+        return this_obj;
     }
 
-    // Kotak di kiri (sebagai jalan yang di kiri)
-    {
-        const geometry = new THREE.BoxGeometry(10, 1, 200);
+    // House Factory::
+    const makeHouse = (adjustment) => {
+        let height = randomBetween(30, 70);
+        const geometry = new THREE.BoxGeometry(45, height, 50);
         const color = generateRandomColor();
         const material = new THREE.MeshPhongMaterial({color});
         const obj = new THREE.Mesh(geometry, material);
                 
-        obj.position.set(-10,0,0);
-        obj.name = "KOTAK_KIRI";
-        
+        obj.position.set(0 + adjustment.x ,height/2 + adjustment.y, 0 + adjustment.z);
+        obj.name = "HOUSE";
         scene.add(obj);
+        return obj;
+    };
+
+    const makeFullTiles = (adjustment) => {
+        let BIG_TILES = [];
+        for(let i=-1; i<2; i++){
+            BIG_TILES.push(makeTiles(15*i,adjustment.y,-1*adjustment.z));
+        }
+        
+        BIG_TILES[0].push(makeHouse(new THREE.Vector3(45,0,-1*adjustment.z)));
+        BIG_TILES[0].push(makeHouse(new THREE.Vector3(-45,0,-1*adjustment.z)));
+        
+        // Random thing to determine will the palang created? wkwwk
+        let roullete = parseInt(randomBetween(0,3));
+        console.log(roullete);
+        if(roullete != 1){
+            // Create the challenge
+            let mid_left_right = parseInt(randomBetween(0,3));
+            console.log("SPAWN DI ", mid_left_right-1)
+            BIG_TILES.push(makePalangRendah(new THREE.Vector3((mid_left_right-1) * 15 ,0, -1 * adjustment.z)));
+        }
+
+        return BIG_TILES;
     }
 
-    // Kotak di kiri (sebagai jalan yang di kiri)
-    {
-        const geometry = new THREE.BoxGeometry(10, 1, 200);
-        const color = generateRandomColor();
-        const material = new THREE.MeshPhongMaterial({color});
-        const obj = new THREE.Mesh(geometry, material);
-                
-        obj.position.set(10,0,0);
-        obj.name = "KOTAK_KANAN";
-        
-        scene.add(obj);
-    }
+    const makePalangRendah = (adjustment) => {
+        // Setara level strukturnya dengan MINI_TILES
+        let this_obj = [];
+        // TIANG KIRI
+        {
+            const geometry = new THREE.BoxGeometry(1.5, 8, 1);
+            const material = new THREE.MeshPhongMaterial({color: 0xC6B9AE});
+            const obj = new THREE.Mesh(geometry, material);
+    
+            obj.position.set(-7.5 + 2 + adjustment.x ,8/2+ 1 + adjustment.y, 0 + adjustment.z);
+            obj.name = "TIANG_KIRI";
+            scene.add(obj);
+            this_obj.push(obj);
+        }
+
+        // TIANG KANAN
+        {
+            const geometry = new THREE.BoxGeometry(1.5, 8, 1);
+            const material = new THREE.MeshPhongMaterial({color: 0xC6B9AE});
+            const obj = new THREE.Mesh(geometry, material);
+    
+            obj.position.set(-1*(-7.5 + 2) + adjustment.x ,8/2+1 + adjustment.y, 0 + adjustment.z);
+            obj.name = "TIANG_KANAN";
+            scene.add(obj);
+            this_obj.push(obj);
+        }
+
+        // PALANG
+        {
+            const geometry = new THREE.BoxGeometry(15, 3, 1);
+            const material = new THREE.MeshPhongMaterial({color: 0xBC5043});
+            const obj = new THREE.Mesh(geometry, material);
+    
+            obj.position.set(0 + adjustment.x ,3/2+8 + 1 + adjustment.y, 0 + adjustment.z);
+            obj.name = "PALANG";
+            scene.add(obj);
+            this_obj.push(obj);
+        }
+        return this_obj;
+    };
+
+    // makePalangRendah(new THREE.Vector3(0,0,-10));
+
 
     // Prototype Player
     {
@@ -425,6 +526,7 @@ function animate () {
     })
 
     function moveCamera(PLAYER_OBJ) {
+        // return;
         camera.position.x = PLAYER_OBJ.position.x;
         camera.position.y = PLAYER_OBJ.position.y + 15;
         camera.lookAt(PLAYER_OBJ.position);
@@ -434,9 +536,18 @@ function animate () {
     let rollRightDeg = 0;
     let rollLeftDeg = 0;
     let time = 0;
+
+    // MAIN FUNCTION HERE
+    
+    let MOVING_OBJECT = [];
+
+    // INITIATE TILES
+    for(let i=0; i<10; i++){
+        MOVING_OBJECT.push(makeFullTiles(new THREE.Vector3(0, 0, i*50)));
+    }
     function render() {
         let PLAYER_OBJ = scene.getObjectByName("PLAYER", true);
-        PLAYER_OBJ.position.y = PLAYER_OBJ.position.y + (Math.sin(time)/25);
+        PLAYER_OBJ.position.y = PLAYER_OBJ.position.y + (Math.sin(time*2)/10);
         if (resizeRendererToDisplaySize(renderer)) {
             console.log("RESIZED")
             const canvas = renderer.domElement;
@@ -478,6 +589,33 @@ function animate () {
             }
             rollRightDeg += rollSpeed;
         }
+
+        // Animate the moving object
+        MOVING_OBJECT.forEach((BIG_TILES) => {
+            // return;
+            let removeornot = false;
+            BIG_TILES.forEach((MINI_TILES) => {
+                MINI_TILES.forEach((object) =>{
+                    object.position.z += rollSpeed/10;
+                    if(object.name === "KOTAK" && object.position.z >= 50){
+                        removeornot = true;
+                    }
+                })
+            })
+
+            if(removeornot == true){
+                BIG_TILES.forEach((MINI_TILES) => {
+                    MINI_TILES.forEach((object) =>{
+                        scene.remove(object);
+                        // object.dispose();
+                    })
+                })
+                // Also remove BIG_TILES from MOVING OBJECT               
+                MOVING_OBJECT.shift();
+                // Then add New BIG_TILES to MOVING OBJECT
+                MOVING_OBJECT.push(makeFullTiles(new THREE.Vector3(0, 0, (10-1)*50 )));
+            }
+        });
 
         moveCamera(PLAYER_OBJ);
 
