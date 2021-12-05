@@ -2,6 +2,14 @@ import * as THREE from 'https://threejsfundamentals.org/threejs/resources/threej
 import {OrbitControls} from 'https://threejsfundamentals.org/threejs/resources/threejs/r132/examples/jsm/controls/OrbitControls.js';
 import {GUI} from 'https://threejsfundamentals.org/threejs/../3rdparty/dat.gui.module.js';
 
+/* ========================================================================
+    START ::: GENERATE NEW MAP PIECE
+======================================================================== */
+
+/* ========================================================================
+    END ::: GENERATE NEW MAP PIECE
+======================================================================== */
+
 class MinMaxGUIHelper {
     constructor(obj, minProp, maxProp, minDif) {
         this.obj = obj;
@@ -69,7 +77,7 @@ function animate () {
     const near = 0.1;
     const far = 1000;
     const camera = new THREE.PerspectiveCamera( fov, aspect , near, far );
-    camera.position.set(0, 10, 25);
+    camera.position.set(0, 25, 25);
 
     let canvas = document.querySelector('#canvas');
     const renderer = new THREE.WebGLRenderer({
@@ -216,24 +224,12 @@ function animate () {
 
     setLight('DirectionalLight', true);
 
-    // buat cube sbg indikasi tempat lampunya
+    /* ======== buat cube sbg indikasi tempat lampunya ======== */
+    const groups = [];
     {
         const geometry = new THREE.BoxGeometry( 1, 1, 1, 3, 3, 3);
-        // const color = generateRandomColor();
         const material = new THREE.MeshPhongMaterial({color: 0xd5eb34});
-        
         let obj = {};
-        obj.atas_leftfront = new THREE.Mesh(geometry, material);
-        obj.atas_leftfront.position.set(-25,50,25);
-        
-        obj.atas_rightfront = new THREE.Mesh(geometry, material);
-        obj.atas_rightfront.position.set(25,50,25);
-        
-        obj.atas_leftback = new THREE.Mesh(geometry, material);
-        obj.atas_leftback.position.set(-25,50,-25);
-        
-        obj.atas_rightback = new THREE.Mesh(geometry, material);
-        obj.atas_rightback.position.set(25,50,-25);
         
         obj.bawah_leftfront = new THREE.Mesh(geometry, material);
         obj.bawah_leftfront.position.set(-30,0,30);
@@ -246,31 +242,51 @@ function animate () {
         
         obj.bawah_rightback = new THREE.Mesh(geometry, material);
         obj.bawah_rightback.position.set(30,0,-30);
-
-        
-        scene.add(obj.atas_leftfront);
-        scene.add(obj.atas_rightfront);
-        scene.add(obj.atas_leftback);
-        scene.add(obj.atas_rightback);
-
         scene.add(obj.bawah_leftfront);
         scene.add(obj.bawah_rightfront);
         scene.add(obj.bawah_leftback);
         scene.add(obj.bawah_rightback);
     }
-    
-    // Lantai-nya
     {
-        const geometry = new THREE.BoxGeometry(50, 0.5, 50);
-        const color = generateRandomColor();
-        const material = new THREE.MeshPhongMaterial({color});
-
-        const lantai = new THREE.Mesh(geometry, material);
-        lantai.position.set(0,0,0);
-        scene.add(lantai);
-        objects["lantai"] = lantai;
+        for (let i = 0; i < 8; i++) {
+            const color = generateRandomColor();
+            const geometry = new THREE.BoxGeometry(50, 20, 50);
+            const material = new THREE.MeshPhongMaterial({color: 0x777777});
+    
+            const group = new THREE.Group();
+        
+            const lantai = new THREE.Mesh(geometry, material);
+            lantai.position.set(0,-10,i ? (-i*50) + 5 : (-i*50));
+            group.add(lantai);
+            console.log(group);
+    
+            scene.add(group);
+            groups.push(group);
+        }
+        // objects["lantai"] = lantai;
     }
 
+    /* ========================================================================
+        START ::: GENERATE LEVEL
+    ======================================================================== */
+    function generateChunk() {
+        const color = generateRandomColor();
+        const geometry = new THREE.BoxGeometry(50, 20, 50);
+        const material = new THREE.MeshPhongMaterial({color: 0x777777});
+
+        const group = new THREE.Group();
+    
+        const lantai = new THREE.Mesh(geometry, material);
+        lantai.position.set(0,-10,camera.position.z - 370);
+        group.add(lantai);
+        console.log(group);
+
+        scene.add(group);
+        groups.push(group);
+    }
+    /* ========================================================================
+        END ::: GENERATE LEVEL
+    ======================================================================== */
     // lantai.position.y = -1;
 
 
@@ -391,6 +407,10 @@ function animate () {
             camera.updateProjectionMatrix();
         }
 
+        /* ========================================================================
+            START ::: MOVEMENT HANDLER
+        ======================================================================== */
+        
         if (MOVEMENT_ACTIVE.ROLL_UP) {
             if(MOVEMENT_ACTIVE.UP_READY){
                 MOVEMENT_TIME.ROLL_UP_X = -1 * Math.sqrt(bounce_distance);
@@ -426,11 +446,24 @@ function animate () {
             rollRightDeg += rollSpeed;
         }
 
-        // objects["octahedron"].rotation.y += 0.003;
-
+        /* ========================================================================
+            END ::: MOVEMENT HANDLER
+        ======================================================================== */
+        controls.target.set(objects["octahedron"].position.x, objects["octahedron"].position.y, objects["octahedron"].position.z);
+        camera.position.set(objects["octahedron"].position.x, objects["octahedron"].position.y + 20, objects["octahedron"].position.z +25);
         t += 0.01;
         t2 += 0.05;
         
+        groups.forEach((group, index) => {
+            group.children[0].position.z += rollSpeed/5;
+            if (group.children[0].position.z - 25 > camera.position.z) {
+                scene.remove(group);
+                groups.splice(index, 1);
+                generateChunk();
+            }
+            
+        })
+
         renderer.render( scene, camera );
         requestAnimationFrame( render );
     }
