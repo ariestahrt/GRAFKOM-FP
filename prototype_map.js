@@ -345,9 +345,18 @@ function animate () {
     // House Factory::
     const makeHouse = (adjustment) => {
         let height = randomBetween(30, 70);
+        let randColor = () => {
+            let res = "#"
+            let color = 1 + Math.floor(height) % 4;
+            for (let i = 0; i < 3; i++) {
+                res += "4";
+                res += color*2;
+            }
+            return res
+        }
         const geometry = new THREE.BoxGeometry(45, height, 50);
         const color = generateRandomColor();
-        const material = new THREE.MeshPhongMaterial({color});
+        const material = new THREE.MeshPhongMaterial({color: randColor()});
         const obj = new THREE.Mesh(geometry, material);
                 
         obj.position.set(0 + adjustment.x ,height/2 + adjustment.y, 0 + adjustment.z);
@@ -367,11 +376,11 @@ function animate () {
         
         // Random thing to determine will the palang created? wkwwk
         let roullete = parseInt(randomBetween(0,3));
-        console.log(roullete);
+        // console.log(roullete);
         if(roullete != 1){
             // Create the challenge
             let mid_left_right = parseInt(randomBetween(0,3));
-            console.log("SPAWN DI ", mid_left_right-1)
+            // console.log("SPAWN DI ", mid_left_right-1)
             BIG_TILES.push(makePalangRendah(new THREE.Vector3((mid_left_right-1) * 15 ,0, -1 * adjustment.z)));
         }
 
@@ -453,11 +462,14 @@ function animate () {
         ROLL_UP: false,
         ROLL_DOWN: false,
         ROLL_LEFT: false,
-        UP_PRESSED: false,
-        LEFT_PRESSED: false,
         ROLL_RIGHT: false,
+        UP_PRESSED: false,
+        DOWN_PRESSED: false,
+        LEFT_PRESSED: false,
         RIGHT_PRESSED: false,
-        UP_READY: true
+        UP_READY: true,
+        DOWN_READY: true,
+        POSITION: 0
     }
 
 
@@ -470,6 +482,8 @@ function animate () {
     let MOVEMENT_TIME = {
         ROLL_UP: null,
         ROLL_UP_X: -1 * Math.sqrt(bounce_distance),
+        ROLL_DOWN: null,
+        ROLL_DOWN_X: -1 * Math.sqrt(bounce_distance),
     }
 
     /*
@@ -488,7 +502,7 @@ function animate () {
         }
         if(event.keyCode == 83) { // S
             // Gerak ke bawah
-            MOVEMENT_ACTIVE.ROLL_DOWN = true;
+            MOVEMENT_ACTIVE.DOWN_PRESSED = false;
         }
         if(event.keyCode == 68) { // D
             // Gerak ke kanan
@@ -503,25 +517,25 @@ function animate () {
 
         if(event.keyCode == 87 || event.keyCode == 32) { // W
             // Gerak ke atas
-            // console.log("W key pressed");
-            MOVEMENT_ACTIVE.ROLL_UP = true;
+            if(!MOVEMENT_ACTIVE.ROLL_DOWN) {
+                MOVEMENT_ACTIVE.ROLL_UP = true;
+            }
         }
         if(event.keyCode == 65) { // A
             // Gerak ke kiri
             MOVEMENT_ACTIVE.ROLL_LEFT = true;
             MOVEMENT_ACTIVE.LEFT_PRESSED = true;
-            // alert("A key pressed"); 
         }
         if(event.keyCode == 83) { // S
             // Gerak ke bawah
-            MOVEMENT_ACTIVE.ROLL_DOWN = true;
-            // alert("S key pressed"); 
+            if(!MOVEMENT_ACTIVE.ROLL_UP) {
+                MOVEMENT_ACTIVE.ROLL_DOWN = true;
+            }
         }
         if(event.keyCode == 68) { // D
             // Gerak ke kanan
             MOVEMENT_ACTIVE.ROLL_RIGHT = true;
             MOVEMENT_ACTIVE.RIGHT_PRESSED = true;
-            // alert("D key pressed"); 
         }
     })
 
@@ -549,45 +563,79 @@ function animate () {
         let PLAYER_OBJ = scene.getObjectByName("PLAYER", true);
         PLAYER_OBJ.position.y = PLAYER_OBJ.position.y + (Math.sin(time*2)/10);
         if (resizeRendererToDisplaySize(renderer)) {
-            console.log("RESIZED")
+            // console.log("RESIZED")
             const canvas = renderer.domElement;
             camera.aspect = canvas.clientWidth / canvas.clientHeight;
             camera.updateProjectionMatrix();
         }
+        
+        // console.log("🚀 ~ file: prototype_map.js ~ line 571 ~ render ~ PLAYER_OBJ", PLAYER_OBJ)
+        if (MOVEMENT_ACTIVE.POSITION === -1 && PLAYER_OBJ.position.x > -15) {
+            PLAYER_OBJ.rotation.z = (rollLeftDeg * Math.PI / 180);
+            PLAYER_OBJ.position.x -= rollSpeed/20;
+        } else if (MOVEMENT_ACTIVE.POSITION === 1 && PLAYER_OBJ.position.x < 15) {
+            PLAYER_OBJ.rotation.z = -(rollRightDeg * Math.PI / 180);
+            PLAYER_OBJ.position.x += rollSpeed/20;
+        } else if (MOVEMENT_ACTIVE.POSITION === 0 && PLAYER_OBJ.position.x < 0) {
+            PLAYER_OBJ.rotation.z = -(rollRightDeg * Math.PI / 180);
+            PLAYER_OBJ.position.x += rollSpeed/20;
+        } else if (MOVEMENT_ACTIVE.POSITION === 0 && PLAYER_OBJ.position.x > 0) {
+            PLAYER_OBJ.rotation.z = (rollLeftDeg * Math.PI / 180);
+            PLAYER_OBJ.position.x -= rollSpeed/20;
+        }
 
+        /* ======== JUMPING ======== */
         if (MOVEMENT_ACTIVE.ROLL_UP) {
             if(MOVEMENT_ACTIVE.UP_READY){
                 MOVEMENT_TIME.ROLL_UP_X = -1 * Math.sqrt(bounce_distance);
                 MOVEMENT_ACTIVE.UP_READY = false;
-            }else{
+                MOVEMENT_ACTIVE.DOWN_READY = false;
+                console.log("🚀 ~ file: prototype_map.js ~ line 591 ~ render ~ MOVEMENT_ACTIVE.ROLL_UP", MOVEMENT_ACTIVE.ROLL_UP)
+                console.log("🚀 ~ file: prototype_map.js ~ line 591 ~ render ~ MOVEMENT_ACTIVE.ROLL_DOWN", MOVEMENT_ACTIVE.ROLL_DOWN)
+            } else if (!MOVEMENT_ACTIVE.ROLL_DOWN){
                 PLAYER_OBJ.position.y = 7 + (-1 * (MOVEMENT_TIME.ROLL_UP_X * MOVEMENT_TIME.ROLL_UP_X) + bounce_distance);
+                PLAYER_OBJ.scale.y = 1 + (-1 * (MOVEMENT_TIME.ROLL_UP_X * MOVEMENT_TIME.ROLL_UP_X) + bounce_distance) / 40;
                 MOVEMENT_TIME.ROLL_UP_X += acceleration;
                 if(MOVEMENT_TIME.ROLL_UP_X >= Math.sqrt(bounce_distance)){
+                    PLAYER_OBJ.scale.y = 1;
                     MOVEMENT_ACTIVE.ROLL_UP = false;
                     MOVEMENT_ACTIVE.UP_PRESSED = false;
+                    MOVEMENT_ACTIVE.UP_READY = true;
+                    MOVEMENT_ACTIVE.DOWN_READY = true;
+                }
+            }
+        }
+
+        /* ======== DUCKING ======== */
+        if (MOVEMENT_ACTIVE.ROLL_DOWN) {
+            if(MOVEMENT_ACTIVE.DOWN_READY){
+                MOVEMENT_TIME.ROLL_DOWN_X = -1 * Math.sqrt(bounce_distance);
+                MOVEMENT_ACTIVE.UP_READY = false;
+                MOVEMENT_ACTIVE.DOWN_READY = false;
+            } else if (!MOVEMENT_ACTIVE.ROLL_UP){
+                PLAYER_OBJ.scale.y = 1 - (-1 * (MOVEMENT_TIME.ROLL_DOWN_X * MOVEMENT_TIME.ROLL_DOWN_X) + bounce_distance) / 30;
+                PLAYER_OBJ.scale.z = 1 + (-1 * (MOVEMENT_TIME.ROLL_DOWN_X * MOVEMENT_TIME.ROLL_DOWN_X) + bounce_distance) / 30;
+                MOVEMENT_TIME.ROLL_DOWN_X += acceleration;
+                if(MOVEMENT_TIME.ROLL_DOWN_X >= Math.sqrt(bounce_distance)){
+                    PLAYER_OBJ.scale.y = 1;
+                    MOVEMENT_ACTIVE.ROLL_DOWN = false;
+                    MOVEMENT_ACTIVE.DOWN_PRESSED = false;
+                    MOVEMENT_ACTIVE.DOWN_READY = true;
                     MOVEMENT_ACTIVE.UP_READY = true;
                 }
             }
         }
 
+        /* ======== MOVE LEFT ======== */
         if(MOVEMENT_ACTIVE.ROLL_LEFT) {
-            PLAYER_OBJ.rotation.z = (rollLeftDeg * Math.PI / 180);
-            PLAYER_OBJ.position.x -= rollSpeed/20;
-            if(rollLeftDeg % 90 === 0 && !MOVEMENT_ACTIVE.LEFT_PRESSED) {
-                rollLeftDeg = 0;
-                MOVEMENT_ACTIVE.ROLL_LEFT = false;
-            }
-            rollLeftDeg += rollSpeed;
+            if(MOVEMENT_ACTIVE.POSITION > -1) MOVEMENT_ACTIVE.POSITION -= 1;
+            MOVEMENT_ACTIVE.ROLL_LEFT = false;
         }
         
+        /* ======== MOVE RIGHT ======== */
         if(MOVEMENT_ACTIVE.ROLL_RIGHT) {
-            PLAYER_OBJ.rotation.z = -(rollRightDeg * Math.PI / 180);
-            PLAYER_OBJ.position.x += rollSpeed/20;
-            if(rollRightDeg % 90 === 0 && !MOVEMENT_ACTIVE.RIGHT_PRESSED) {
-                rollRightDeg = 0;
-                MOVEMENT_ACTIVE.ROLL_RIGHT = false;
-            }
-            rollRightDeg += rollSpeed;
+            if(MOVEMENT_ACTIVE.POSITION < 1) MOVEMENT_ACTIVE.POSITION += 1;
+            MOVEMENT_ACTIVE.ROLL_RIGHT = false;
         }
 
         // Animate the moving object
