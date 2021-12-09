@@ -226,36 +226,50 @@ function animate () {
 
     // buat cube sbg indikasi tempat lampunya
     {
-        const geometry = new THREE.BoxGeometry( 1, 1, 1, 3, 3, 3);
+        // const geometry = new THREE.BoxGeometry( 1, 1, 1, 3, 3, 3);
         // const color = generateRandomColor();
-        const material = new THREE.MeshPhongMaterial({color: 0xd5eb34});
+        // const material = new THREE.MeshPhongMaterial({color: 0xd5eb34});
         
-        let obj = {};
-        obj.atas_leftfront = new THREE.Mesh(geometry, material);
-        obj.atas_leftfront.position.set(-25,50,25);
+        // let obj = {};
+        // obj.atas_leftfront = new THREE.Mesh(geometry, material);
+        // obj.atas_leftfront.position.set(-25,50,25);
         
-        obj.atas_rightfront = new THREE.Mesh(geometry, material);
-        obj.atas_rightfront.position.set(25,50,25);
+        // obj.atas_rightfront = new THREE.Mesh(geometry, material);
+        // obj.atas_rightfront.position.set(25,50,25);
         
-        obj.atas_leftback = new THREE.Mesh(geometry, material);
-        obj.atas_leftback.position.set(-25,50,-25);
+        // obj.atas_leftback = new THREE.Mesh(geometry, material);
+        // obj.atas_leftback.position.set(-25,50,-25);
         
-        obj.atas_rightback = new THREE.Mesh(geometry, material);
-        obj.atas_rightback.position.set(25,50,-25);
+        // obj.atas_rightback = new THREE.Mesh(geometry, material);
+        // obj.atas_rightback.position.set(25,50,-25);
         
-        obj.bawah_leftfront = new THREE.Mesh(geometry, material);
-        obj.bawah_leftfront.position.set(-30,0,30);
+        // obj.bawah_leftfront = new THREE.Mesh(geometry, material);
+        // obj.bawah_leftfront.position.set(-30,0,30);
 
-        obj.bawah_rightfront = new THREE.Mesh(geometry, material);
-        obj.bawah_rightfront.position.set(30,0,30);
+        // obj.bawah_rightfront = new THREE.Mesh(geometry, material);
+        // obj.bawah_rightfront.position.set(30,0,30);
         
-        obj.bawah_leftback = new THREE.Mesh(geometry, material);
-        obj.bawah_leftback.position.set(-30,0,-30);
+        // obj.bawah_leftback = new THREE.Mesh(geometry, material);
+        // obj.bawah_leftback.position.set(-30,0,-30);
         
-        obj.bawah_rightback = new THREE.Mesh(geometry, material);
-        obj.bawah_rightback.position.set(30,0,-30);
+        // obj.bawah_rightback = new THREE.Mesh(geometry, material);
+        // obj.bawah_rightback.position.set(30,0,-30);
 
-        
+        scene.fog = new THREE.Fog( 0x111122, 0, 400 )
+
+        const material = new THREE.MeshPhongMaterial({color:0x111111});
+        const far_wall = new THREE.Mesh(new THREE.BoxGeometry(200, 400, 0.5), material);
+        const left_wall = new THREE.Mesh(new THREE.BoxGeometry(500, 250, 0.5), material);
+        const right_wall = new THREE.Mesh(new THREE.BoxGeometry(500, 250, 0.5), material);
+                
+        far_wall.position.set(0, 125,-45*10);
+        left_wall.position.set(90, 125, -200);
+        left_wall.rotation.y = Math.PI * -.5;
+        right_wall.position.set(-90, 125, -200);
+        right_wall.rotation.y = Math.PI * -.5;
+        scene.add(far_wall);
+        scene.add(left_wall);
+        scene.add(right_wall);
         // scene.add(obj.atas_leftfront);
         // scene.add(obj.atas_rightfront);
         // scene.add(obj.atas_leftback);
@@ -342,7 +356,9 @@ function animate () {
         return this_obj;
     }
 
-    // House Factory::
+    /* ========================================================================
+        ::: HOUSE FACTORY
+    ======================================================================== */
     const makeHouse = (adjustment) => {
         let height = randomBetween(30, 70);
         let randColor = () => {
@@ -365,6 +381,56 @@ function animate () {
         return obj;
     };
 
+    /* ========================================================================
+        ::: GATE FACTORY
+    ======================================================================== */
+
+    const makeGate = (adjustment) => {
+        // Setara level strukturnya dengan MINI_TILES
+        let this_obj = [];
+        {
+            let pillarPos = [];
+            if(adjustment.x === -1) {
+                pillarPos = [0, 1]
+            }
+            else if(adjustment.x === 0){
+                pillarPos = [-1, 1]
+            }
+            else {
+                pillarPos = [-1, 0]
+            }
+
+            const geometry = new THREE.BoxGeometry(15, 50, 40);
+            const material = new THREE.MeshPhongMaterial({color: 0x444444});
+            
+            // PILLAR KIRI
+            const obj = new THREE.Mesh(geometry, material);
+            obj.position.set(pillarPos[0] * 15 ,20 + adjustment.y, 0 + adjustment.z);
+            obj.name = "PILLAR_KIRI";
+            
+            // PILLAR KANAN
+            const obj2 = new THREE.Mesh(geometry, material);
+            obj2.position.set(pillarPos[1] * 15 ,20 + adjustment.y, 0 + adjustment.z);
+            obj2.name = "PILLAR_KANAN";
+            
+            scene.add(obj, obj2);
+            this_obj.push(obj, obj2);
+        }
+
+        {
+            const geometry = new THREE.BoxGeometry(15, 10, 40);
+            const material = new THREE.MeshPhongMaterial({color: 0x444444});
+            const obj = new THREE.Mesh(geometry, material);
+    
+            obj.position.set(adjustment.x * 15, 40, 0 + adjustment.z);
+            obj.name = "PILLAR_ATAS";
+            scene.add(obj);
+            this_obj.push(obj);
+        }
+        return this_obj;
+    };
+
+    let prevTile = ""
     const makeFullTiles = (adjustment) => {
         let BIG_TILES = [];
         for(let i=-1; i<2; i++){
@@ -375,43 +441,43 @@ function animate () {
         BIG_TILES[0].push(makeHouse(new THREE.Vector3(-45,0,-1*adjustment.z)));
         
         // Random thing to determine will the palang created? wkwwk
-        let roullete = parseInt(randomBetween(0,3));
-        // console.log(roullete);
-        if(roullete != 1){
-            // Create the challenge
-            let mid_left_right = parseInt(randomBetween(0,3));
-            // console.log("SPAWN DI ", mid_left_right-1)
+        let roullete = parseInt(randomBetween(0, 20));
+        console.log("🚀 ~ file: prototype_map.js ~ line 444 ~ makeFullTiles ~ roullete", roullete)
+        let mid_left_right = parseInt(randomBetween(0,3));
+        if (!(roullete % 5) && prevTile !== "GATE") {
+            prevTile = "GATE";
+            BIG_TILES.push(makeGate(new THREE.Vector3((mid_left_right-1) ,0, -1 * adjustment.z)));
+        }
+        else if(!(roullete % 3)){
+            prevTile = "PALANG";
             BIG_TILES.push(makePalangRendah(new THREE.Vector3((mid_left_right-1) * 15 ,0, -1 * adjustment.z)));
         }
 
         return BIG_TILES;
     }
 
+    /* ========================================================================
+        ::: PALANG FACTORY
+    ======================================================================== */
     const makePalangRendah = (adjustment) => {
         // Setara level strukturnya dengan MINI_TILES
         let this_obj = [];
-        // TIANG KIRI
         {
             const geometry = new THREE.BoxGeometry(1.5, 8, 1);
             const material = new THREE.MeshPhongMaterial({color: 0xC6B9AE});
+            
+            // TIANG KIRI
             const obj = new THREE.Mesh(geometry, material);
-    
             obj.position.set(-7.5 + 2 + adjustment.x ,8/2+ 1 + adjustment.y, 0 + adjustment.z);
             obj.name = "TIANG_KIRI";
-            scene.add(obj);
-            this_obj.push(obj);
-        }
+            
+            // TIANG KANAN
+            const obj2 = new THREE.Mesh(geometry, material);
+            obj2.position.set(-1*(-7.5 + 2) + adjustment.x ,8/2+1 + adjustment.y, 0 + adjustment.z);
+            obj2.name = "TIANG_KANAN";
 
-        // TIANG KANAN
-        {
-            const geometry = new THREE.BoxGeometry(1.5, 8, 1);
-            const material = new THREE.MeshPhongMaterial({color: 0xC6B9AE});
-            const obj = new THREE.Mesh(geometry, material);
-    
-            obj.position.set(-1*(-7.5 + 2) + adjustment.x ,8/2+1 + adjustment.y, 0 + adjustment.z);
-            obj.name = "TIANG_KANAN";
-            scene.add(obj);
-            this_obj.push(obj);
+            scene.add(obj, obj2);
+            this_obj.push(obj, obj2);
         }
 
         // PALANG
