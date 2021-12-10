@@ -8,8 +8,6 @@ import {GLTFLoader} from 'https://cdn.jsdelivr.net/npm/three@0.118.1/examples/js
 
 // console.log = () => {}
 
-const soundtrack = new Audio('resources/audio/soundtrack.mp3');
-soundtrack.play();
 let GLOBAL_COIN = 0;
 let GLOBAL_STATE = "PLAYING";
 
@@ -1459,6 +1457,17 @@ function animate () {
     // MAIN FUNCTION HERE
     let MOVING_OBJECT = [];
 
+    setTimeout(() => {
+        const soundtrack = new Audio('resources/audio/soundtrack.mp3');
+        soundtrack.play();        
+    }, 2000);
+
+    
+    let PLAYER_NAME = null;
+    setTimeout(() => {
+        PLAYER_NAME = prompt("Masukkan nama anda", "Ariesta Ganteng");
+    })
+    let TIME_START = Date.now();
     // INITIATE TILES
     for(let i=0; i<10; i++){
         MOVING_OBJECT.push( generateChunk(new THREE.Vector3(0,0, i*50)) );
@@ -1512,6 +1521,22 @@ function animate () {
                         obj.position.z += rollSpeed/10;
                         if(detectCollisionCubes(obj, PLAYER_HIT_BOX)){
                             GLOBAL_STATE = "GAME OVER";
+                            // Send ajax request to database
+
+                            {
+                                $.ajax({
+                                    type: 'POST',
+                                    url: "http://grafkom.nyakit.in/save.php",
+                                    data: {
+                                        player_name:PLAYER_NAME,
+                                        coin_earned:GLOBAL_COIN,
+                                        time_alive:Date.now() - TIME_START
+                                    },
+                                    success: function(resultData) {
+                                        alert(resultData) 
+                                    }
+                                });
+                            }
                             alert("GAME OVER!, YOUR COIN :: "+GLOBAL_COIN)
                         }
                         if(obj.position.z >= 50){
