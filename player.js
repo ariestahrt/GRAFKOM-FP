@@ -1388,55 +1388,55 @@ function animate () {
     /*
     // ON KEY UP EVENT LISTENER
     */
-    $(document).on('keyup', (event) => {
+    // $(document).on('keyup', (event) => {
 
-        if(event.keyCode == 87 || event.keyCode == 32) { // W
-            // Gerak ke atas
-            // console.log("W key pressed");
-            MOVEMENT_ACTIVE.UP_PRESSED = false;
-        }
-        if(event.keyCode == 65) { // A
-            // Gerak ke kiri
-            MOVEMENT_ACTIVE.LEFT_PRESSED = false;
-        }
-        if(event.keyCode == 83) { // S
-            // Gerak ke bawah
-            MOVEMENT_ACTIVE.DOWN_PRESSED = false;
-        }
-        if(event.keyCode == 68) { // D
-            // Gerak ke kanan
-            MOVEMENT_ACTIVE.RIGHT_PRESSED = false;
-        }
-    })
+    //     if(event.keyCode == 87 || event.keyCode == 32) { // W
+    //         // Gerak ke atas
+    //         // console.log("W key pressed");
+    //         MOVEMENT_ACTIVE.UP_PRESSED = false;
+    //     }
+    //     if(event.keyCode == 65) { // A
+    //         // Gerak ke kiri
+    //         MOVEMENT_ACTIVE.LEFT_PRESSED = false;
+    //     }
+    //     if(event.keyCode == 83) { // S
+    //         // Gerak ke bawah
+    //         MOVEMENT_ACTIVE.DOWN_PRESSED = false;
+    //     }
+    //     if(event.keyCode == 68) { // D
+    //         // Gerak ke kanan
+    //         MOVEMENT_ACTIVE.RIGHT_PRESSED = false;
+    //     }
+    // })
 
-    /*
-    // ON KEY DOWN EVENT LISTENER
-    */
-    $(document).on('keydown', (event) => {
+    // /*
+    // // ON KEY DOWN EVENT LISTENER
+    // */
+    // $(document).on('keydown', (event) => {
 
-        if(event.keyCode == 87 || event.keyCode == 32) { // W
-            // Gerak ke atas
-            if(!MOVEMENT_ACTIVE.ROLL_DOWN) {
-                MOVEMENT_ACTIVE.ROLL_UP = true;
-            }
-        }
-        if(event.keyCode == 65) { // A
-            // Gerak ke kiri
-            MOVEMENT_ACTIVE.ROLL_LEFT = true;
-            MOVEMENT_ACTIVE.LEFT_PRESSED = true;
-        }
-        if(event.keyCode == 83) { // S
-            // Gerak ke bawah
-            if(!MOVEMENT_ACTIVE.ROLL_UP) {
-                MOVEMENT_ACTIVE.ROLL_DOWN = true;
-            }
-        }
-        if(event.keyCode == 68) { // D
-            // Gerak ke kanan
-            MOVEMENT_ACTIVE.ROLL_RIGHT = true;
-            MOVEMENT_ACTIVE.RIGHT_PRESSED = true;
-        }
-    })
+    //     if(event.keyCode == 87 || event.keyCode == 32) { // W
+    //         // Gerak ke atas
+    //         if(!MOVEMENT_ACTIVE.ROLL_DOWN) {
+    //             MOVEMENT_ACTIVE.ROLL_UP = true;
+    //         }
+    //     }
+    //     if(event.keyCode == 65) { // A
+    //         // Gerak ke kiri
+    //         MOVEMENT_ACTIVE.ROLL_LEFT = true;
+    //         MOVEMENT_ACTIVE.LEFT_PRESSED = true;
+    //     }
+    //     if(event.keyCode == 83) { // S
+    //         // Gerak ke bawah
+    //         if(!MOVEMENT_ACTIVE.ROLL_UP) {
+    //             MOVEMENT_ACTIVE.ROLL_DOWN = true;
+    //         }
+    //     }
+    //     if(event.keyCode == 68) { // D
+    //         // Gerak ke kanan
+    //         MOVEMENT_ACTIVE.ROLL_RIGHT = true;
+    //         MOVEMENT_ACTIVE.RIGHT_PRESSED = true;
+    //     }
+    // })
 
     function moveCamera(obj) {
         // return;
