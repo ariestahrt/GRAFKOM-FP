@@ -11,6 +11,7 @@ import {GLTFLoader} from 'https://cdn.jsdelivr.net/npm/three@0.118.1/examples/js
 const soundtrack = new Audio('resources/audio/soundtrack.mp3');
 soundtrack.play();
 let GLOBAL_COIN = 0;
+let GLOBAL_STATE = "PLAYING";
 
 const last = (obj, pos=-1) => {
     return obj[obj.length + pos];
@@ -1465,6 +1466,7 @@ function animate () {
 
     console.log(MOVING_OBJECT);
     function render() {
+        if(GLOBAL_STATE != "PLAYING") return;
         // let PLAYER_OBJ = scene.getObjectByName("PLAYER", true);
         PLAYER_HIT_BOX.position.y = PLAYER_HIT_BOX.position.y + (Math.sin(time*2)/15);
 
@@ -1509,6 +1511,7 @@ function animate () {
                     obs.obj.forEach((obj) => {
                         obj.position.z += rollSpeed/10;
                         if(detectCollisionCubes(obj, PLAYER_HIT_BOX)){
+                            GLOBAL_STATE = "GAME OVER";
                             alert("GAME OVER!, YOUR COIN :: "+GLOBAL_COIN)
                         }
                         if(obj.position.z >= 50){
