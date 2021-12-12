@@ -105,6 +105,7 @@ class BasicCharacterController {
             loader.load('jump.fbx', (a) => { _OnLoad('jump', a); });
             loader.load('run.fbx', (a) => { _OnLoad('run', a); });
             loader.load('run.fbx', (a) => { _OnLoad('idle', a); });
+            loader.load('slide.fbx', (a) => { _OnLoad('slide', a); });
             loader.load('dance.fbx', (a) => { _OnLoad('dance', a); });
         });
     }
@@ -144,6 +145,10 @@ class BasicCharacterController {
     
         if (this._input._keys.forward) {
             this._input.MOVEMENT_ACTIVE.ROLL_UP = true;
+        }
+
+        if (this._input._keys.backward) {
+            this._input.MOVEMENT_ACTIVE.ROLL_DOWN = true;
         }
         
         if (this._input.MOVEMENT_ACTIVE.ROLL_LEFT) {
@@ -190,6 +195,26 @@ class BasicCharacterController {
                     this._input.MOVEMENT_ACTIVE.UP_PRESSED = false;
                     this._input.MOVEMENT_ACTIVE.UP_READY = true;
                     this._input.MOVEMENT_ACTIVE.DOWN_READY = true;
+                }
+            }
+        }
+
+        /* ======== DUCKING ======== */
+        if (this._input.MOVEMENT_ACTIVE.ROLL_DOWN) {
+            if(this._input.MOVEMENT_ACTIVE.DOWN_READY){
+                this.MOVEMENT_TIME.ROLL_DOWN_X = -1 * Math.sqrt(bounce_distance);
+                this._input.MOVEMENT_ACTIVE.UP_READY = false;
+                this._input.MOVEMENT_ACTIVE.DOWN_READY = false;
+            } else if (!this._input.MOVEMENT_ACTIVE.ROLL_UP){
+                this.PLAYER_HIT_BOX.scale.y = 1 - (-1 * (this.MOVEMENT_TIME.ROLL_DOWN_X * this.MOVEMENT_TIME.ROLL_DOWN_X) + bounce_distance) / 20;
+                this.PLAYER_HIT_BOX.scale.z = 1 + (-1 * (this.MOVEMENT_TIME.ROLL_DOWN_X * this.MOVEMENT_TIME.ROLL_DOWN_X) + bounce_distance) / 20;
+                this.MOVEMENT_TIME.ROLL_DOWN_X += acceleration;
+                if(this.MOVEMENT_TIME.ROLL_DOWN_X >= Math.sqrt(bounce_distance)){
+                    this.PLAYER_HIT_BOX.scale.y = 1;
+                    this._input.MOVEMENT_ACTIVE.ROLL_DOWN = false;
+                    this._input.MOVEMENT_ACTIVE.DOWN_PRESSED = false;
+                    this._input.MOVEMENT_ACTIVE.DOWN_READY = true;
+                    this._input.MOVEMENT_ACTIVE.UP_READY = true;
                 }
             }
         }
@@ -371,6 +396,7 @@ class CharacterFSM extends FiniteStateMachine {
         this._AddState('walk', WalkState);
         this._AddState('jump', JumpState);
         this._AddState('run', RunState);
+        this._AddState('slide', SlideState);
         this._AddState('dance', DanceState);
     }
 };
@@ -531,7 +557,55 @@ class JumpState extends State {
         this._parent.SetState('idle');
     }
 };
-  
+
+
+class SlideState extends State {
+    constructor(parent) {
+        super(parent);
+    }
+
+    get Name() {
+        return 'slide';
+    }
+
+    Enter(prevState) {
+        const curAction = this._parent._proxy._animations['slide'].action;
+        if (prevState) {
+        const prevAction = this._parent._proxy._animations[prevState.Name].action;
+
+        curAction.enabled = true;
+
+        if (prevState.Name == 'run') {
+            const ratio = curAction.getClip().duration / prevAction.getClip().duration;
+            curAction.time = prevAction.time * ratio;
+        } else {
+            curAction.time = 0.0;
+            curAction.setEffectiveTimeScale(1.0);
+            curAction.setEffectiveWeight(1.0);
+        }
+
+        curAction.crossFadeFrom(prevAction, 0.5, true);
+        curAction.play();
+        } else {
+        curAction.play();
+        }
+    }
+
+    Exit() {
+    }
+
+    Update(timeElapsed, input) {
+        if (input._keys.forward || input._keys.backward) {
+        if (input._keys.shift) {
+            this._parent.SetState('run');
+        }
+        return;
+        }
+
+        this._parent.SetState('idle');
+    }
+};
+
 class RunState extends State {
     constructor(parent) {
         super(parent);
@@ -608,9 +682,11 @@ class IdleState extends State {
     }
 
     Update(_, input) {
-        if (input._keys.forward || input._keys.backward) {
-        this._parent.SetState('jump');
-        } else if (input._keys.space) {
+        if (input._keys.forward) {
+            this._parent.SetState('jump');
+        } else if(input._keys.backward){
+            this._parent.SetState('slide');
+        }else if (input._keys.space) {
         this._parent.SetState('dance');
         }
     }
