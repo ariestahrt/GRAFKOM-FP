@@ -33,20 +33,6 @@ class BasicCharacterController {
     }
   
     _Init(params) {
-        this.MOVEMENT_ACTIVE = {
-            ROLL_UP: false,
-            ROLL_DOWN: false,
-            ROLL_LEFT: false,
-            ROLL_RIGHT: false,
-            UP_PRESSED: false,
-            DOWN_PRESSED: false,
-            LEFT_PRESSED: false,
-            RIGHT_PRESSED: false,
-            UP_READY: true,
-            DOWN_READY: true,
-            POSITION: 0
-        }
-
         this.acceleration = 0.1;
         this.bounce_distance = 20;
     
@@ -156,47 +142,42 @@ class BasicCharacterController {
         }
     
         if (this._input._keys.forward) {
-            this.MOVEMENT_ACTIVE.ROLL_UP = true;
-            // velocity.z += acc.z * timeInSeconds;
-        }
-        if (this._input._keys.backward) {
-            // velocity.z -= acc.z * timeInSeconds;
+            this._input.MOVEMENT_ACTIVE.ROLL_UP = true;
         }
         
-        if (this._input._keys.left) {
-            if((Date.now() - this._input._time_pressed.left) % 500 < 10 ){
-                if(this.MOVEMENT_ACTIVE.POSITION > -1) this.MOVEMENT_ACTIVE.POSITION -= 1;                
+        if (this._input.MOVEMENT_ACTIVE.ROLL_LEFT) {
+            if(this._input.MOVEMENT_ACTIVE.POSITION > -1) {
+                this._input.MOVEMENT_ACTIVE.POSITION -= 1
+                this._input.MOVEMENT_ACTIVE.ROLL_LEFT = false
+            }         
+        }
+
+        if (this._input.MOVEMENT_ACTIVE.ROLL_RIGHT) {
+            if(this._input.MOVEMENT_ACTIVE.POSITION < 1) {
+                this._input.MOVEMENT_ACTIVE.POSITION += 1
+                this._input.MOVEMENT_ACTIVE.ROLL_RIGHT = false
             }
         }
 
-        if (this._input._keys.right) {
-            if((Date.now() - this._input._time_pressed.right) % 500 < 10 ){
-                if(this.MOVEMENT_ACTIVE.POSITION < 1) this.MOVEMENT_ACTIVE.POSITION += 1;
-            }
+        if (this._input.MOVEMENT_ACTIVE.POSITION === -1 && controlObject.position.x > -15) {
+            controlObject.position.x -= this.rollSpeed/10;
+        } else if (this._input.MOVEMENT_ACTIVE.POSITION === 1 && controlObject.position.x < 15) {
+            controlObject.position.x += this.rollSpeed/10;
+        } else if (this._input.MOVEMENT_ACTIVE.POSITION === 0 && controlObject.position.x < 0) {
+            controlObject.position.x += this.rollSpeed/10;
+        } else if (this._input.MOVEMENT_ACTIVE.POSITION === 0 && controlObject.position.x > 0) {
+            controlObject.position.x -= this.rollSpeed/10;
         }
-
-        if (this.MOVEMENT_ACTIVE.POSITION === -1 && controlObject.position.x > -15) {
-            controlObject.position.x -= this.rollSpeed/20;
-        } else if (this.MOVEMENT_ACTIVE.POSITION === 1 && controlObject.position.x < 15) {
-            controlObject.position.x += this.rollSpeed/20;
-        } else if (this.MOVEMENT_ACTIVE.POSITION === 0 && controlObject.position.x < 0) {
-            controlObject.position.x += this.rollSpeed/20;
-        } else if (this.MOVEMENT_ACTIVE.POSITION === 0 && controlObject.position.x > 0) {
-            controlObject.position.x -= this.rollSpeed/20;
-        }
-
 
         // JUMPING
         let bounce_distance = this.bounce_distance;
         let acceleration = this.acceleration;
-        if(this.MOVEMENT_ACTIVE.ROLL_UP){
-            if(this.MOVEMENT_ACTIVE.UP_READY){
+        if(this._input.MOVEMENT_ACTIVE.ROLL_UP){
+            if(this._input.MOVEMENT_ACTIVE.UP_READY){
                 this.MOVEMENT_TIME.ROLL_UP_X = -1 * Math.sqrt(bounce_distance);
-                this.MOVEMENT_ACTIVE.UP_READY = false;
-                this.MOVEMENT_ACTIVE.DOWN_READY = false;
-                console.log("🚀 ~ file: prototype_map.js ~ line 591 ~ render ~ MOVEMENT_ACTIVE.ROLL_UP", this.MOVEMENT_ACTIVE.ROLL_UP)
-                console.log("🚀 ~ file: prototype_map.js ~ line 591 ~ render ~ MOVEMENT_ACTIVE.ROLL_DOWN", this.MOVEMENT_ACTIVE.ROLL_DOWN)
-            } else if (!this.MOVEMENT_ACTIVE.ROLL_DOWN){
+                this._input.MOVEMENT_ACTIVE.UP_READY = false;
+                this._input.MOVEMENT_ACTIVE.DOWN_READY = false;
+            } else if (!this._input.MOVEMENT_ACTIVE.ROLL_DOWN){
                 controlObject.position.y = (-1 * (this.MOVEMENT_TIME.ROLL_UP_X * this.MOVEMENT_TIME.ROLL_UP_X) + bounce_distance);
                 this._player_hit_box.position.y = 7 + (-1 * (this.MOVEMENT_TIME.ROLL_UP_X * this.MOVEMENT_TIME.ROLL_UP_X) + bounce_distance);
                 this._player_hit_box.scale.y = 1 + (-1 * (this.MOVEMENT_TIME.ROLL_UP_X * this.MOVEMENT_TIME.ROLL_UP_X) + bounce_distance) / 40;
@@ -204,12 +185,12 @@ class BasicCharacterController {
                 if(this.MOVEMENT_TIME.ROLL_UP_X >= Math.sqrt(bounce_distance)){
                     this._player_hit_box.scale.y = 1;
                     this._input._keys.forward = false;
-                    this.MOVEMENT_ACTIVE.ROLL_UP = false;
-                    this.MOVEMENT_ACTIVE.UP_PRESSED = false;
-                    this.MOVEMENT_ACTIVE.UP_READY = true;
-                    this.MOVEMENT_ACTIVE.DOWN_READY = true;
+                    this._input.MOVEMENT_ACTIVE.ROLL_UP = false;
+                    this._input.MOVEMENT_ACTIVE.UP_PRESSED = false;
+                    this._input.MOVEMENT_ACTIVE.UP_READY = true;
+                    this._input.MOVEMENT_ACTIVE.DOWN_READY = true;
                 }
-            }    
+            }
         }
 
         this._player_hit_box.position.x = controlObject.position.x;
@@ -248,6 +229,19 @@ class BasicCharacterControllerInput {
   
     _Init() {
         this._last_pressed = 0;
+        this.MOVEMENT_ACTIVE = {
+            ROLL_UP: false,
+            ROLL_DOWN: false,
+            ROLL_LEFT: false,
+            ROLL_RIGHT: false,
+            UP_PRESSED: false,
+            DOWN_PRESSED: false,
+            LEFT_PRESSED: false,
+            RIGHT_PRESSED: false,
+            UP_READY: true,
+            DOWN_READY: true,
+            POSITION: 0
+        };
         this._keys = {
             forward: false,
             backward: false,
@@ -263,7 +257,7 @@ class BasicCharacterControllerInput {
             right: 0,
             space: 0,
             shift: 0,
-        }
+        };
         document.addEventListener('keydown', (e) => this._onKeyDown(e), false);
         document.addEventListener('keyup', (e) => this._onKeyUp(e), false);
     }
@@ -273,22 +267,27 @@ class BasicCharacterControllerInput {
             case 87: // w
                 this._time_pressed.forward = Date.now();
                 this._keys.forward = true;
+                this.MOVEMENT_ACTIVE.ROLL_UP = true;
                 break;
             case 65: // a
                 this._time_pressed.left = Date.now();
                 this._keys.left = true;
+                this.MOVEMENT_ACTIVE.ROLL_LEFT = true;
                 break;
             case 83: // s
                 this._time_pressed.backward = Date.now();
                 this._keys.backward = true;
+                this.MOVEMENT_ACTIVE.ROLL_DOWN = true;
                 break;
             case 68: // d
                 this._time_pressed.right = Date.now();
                 this._keys.right = true;
+                this.MOVEMENT_ACTIVE.ROLL_RIGHT = true;
                 break;
             case 32: // SPACE
                 this._time_pressed.space = Date.now();
                 this._keys.space = true;
+                this.MOVEMENT_ACTIVE.ROLL_UP = true;
                 break;
             case 16: // SHIFT
                 this._time_pressed.shift = Date.now();
@@ -301,18 +300,23 @@ class BasicCharacterControllerInput {
       switch(event.keyCode) {
         case 87: // w
             // this._keys.forward = false;
+            this.MOVEMENT_ACTIVE.ROLL_UP = false;
             break;
         case 65: // a
             this._keys.left = false;
+            this.MOVEMENT_ACTIVE.ROLL_LEFT = false;
             break;
         case 83: // s
             this._keys.backward = false;
+            this.MOVEMENT_ACTIVE.ROLL_RIGHT = false;
             break;
         case 68: // d
             this._keys.right = false;
+            this.MOVEMENT_ACTIVE.ROLL_DOWN = false;
             break;
         case 32: // SPACE
             this._keys.space = false;
+            this.MOVEMENT_ACTIVE.ROLL_UP = false;
             break;
         case 16: // SHIFT
             this._keys.shift = false;
@@ -367,7 +371,7 @@ class CharacterFSM extends FiniteStateMachine {
         this._AddState('jump', JumpState);
         this._AddState('run', RunState);
         this._AddState('dance', DanceState);
-        }
+    }
 };
   
   
@@ -1383,59 +1387,6 @@ function animate () {
         ROLL_DOWN_X: -1 * Math.sqrt(bounce_distance),
     }
 
-    /*
-    // ON KEY UP EVENT LISTENER
-    */
-    // $(document).on('keyup', (event) => {
-
-    //     if(event.keyCode == 87 || event.keyCode == 32) { // W
-    //         // Gerak ke atas
-    //         // console.log("W key pressed");
-    //         MOVEMENT_ACTIVE.UP_PRESSED = false;
-    //     }
-    //     if(event.keyCode == 65) { // A
-    //         // Gerak ke kiri
-    //         MOVEMENT_ACTIVE.LEFT_PRESSED = false;
-    //     }
-    //     if(event.keyCode == 83) { // S
-    //         // Gerak ke bawah
-    //         MOVEMENT_ACTIVE.DOWN_PRESSED = false;
-    //     }
-    //     if(event.keyCode == 68) { // D
-    //         // Gerak ke kanan
-    //         MOVEMENT_ACTIVE.RIGHT_PRESSED = false;
-    //     }
-    // })
-
-    // /*
-    // // ON KEY DOWN EVENT LISTENER
-    // */
-    // $(document).on('keydown', (event) => {
-
-    //     if(event.keyCode == 87 || event.keyCode == 32) { // W
-    //         // Gerak ke atas
-    //         if(!MOVEMENT_ACTIVE.ROLL_DOWN) {
-    //             MOVEMENT_ACTIVE.ROLL_UP = true;
-    //         }
-    //     }
-    //     if(event.keyCode == 65) { // A
-    //         // Gerak ke kiri
-    //         MOVEMENT_ACTIVE.ROLL_LEFT = true;
-    //         MOVEMENT_ACTIVE.LEFT_PRESSED = true;
-    //     }
-    //     if(event.keyCode == 83) { // S
-    //         // Gerak ke bawah
-    //         if(!MOVEMENT_ACTIVE.ROLL_UP) {
-    //             MOVEMENT_ACTIVE.ROLL_DOWN = true;
-    //         }
-    //     }
-    //     if(event.keyCode == 68) { // D
-    //         // Gerak ke kanan
-    //         MOVEMENT_ACTIVE.ROLL_RIGHT = true;
-    //         MOVEMENT_ACTIVE.RIGHT_PRESSED = true;
-    //     }
-    // })
-
     function moveCamera(obj) {
         // return;
         camera.position.x = obj.position.x;
@@ -1443,7 +1394,7 @@ function animate () {
         camera.lookAt(obj.position);
     }
     
-    let rollSpeed = 10;
+    let rollSpeed = 20;
     let rollRightDeg = 0;
     let rollLeftDeg = 0;
     let time = 0;
