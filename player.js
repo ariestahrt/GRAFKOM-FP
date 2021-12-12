@@ -27,13 +27,14 @@ class BasicCharacterControllerProxy {
 
 
 class BasicCharacterController {
-    constructor(params, player_hit_box) {
-        this._player_hit_box = player_hit_box;
+    constructor(params, player_hit_box, rollSpeed) {
+        this.PLAYER_HIT_BOX = player_hit_box;
+        this.rollSpeed = rollSpeed;
         this._Init(params);
     }
   
     _Init(params) {
-        this.acceleration = 0.1;
+        this.acceleration = this.rollSpeed/(25/0.3);
         this.bounce_distance = 20;
     
         this.MOVEMENT_TIME = {
@@ -43,7 +44,7 @@ class BasicCharacterController {
             ROLL_DOWN_X: -1 * Math.sqrt(this.bounce_distance),
         }
 
-        this.rollSpeed = 10;
+        
 
         this._params = params;
         this._decceleration = new THREE.Vector3(-0.0005, -0.0001, -5.0);
@@ -179,11 +180,11 @@ class BasicCharacterController {
                 this._input.MOVEMENT_ACTIVE.DOWN_READY = false;
             } else if (!this._input.MOVEMENT_ACTIVE.ROLL_DOWN){
                 controlObject.position.y = (-1 * (this.MOVEMENT_TIME.ROLL_UP_X * this.MOVEMENT_TIME.ROLL_UP_X) + bounce_distance);
-                this._player_hit_box.position.y = 7 + (-1 * (this.MOVEMENT_TIME.ROLL_UP_X * this.MOVEMENT_TIME.ROLL_UP_X) + bounce_distance);
-                this._player_hit_box.scale.y = 1 + (-1 * (this.MOVEMENT_TIME.ROLL_UP_X * this.MOVEMENT_TIME.ROLL_UP_X) + bounce_distance) / 40;
+                this.PLAYER_HIT_BOX.position.y = 7 + (-1 * (this.MOVEMENT_TIME.ROLL_UP_X * this.MOVEMENT_TIME.ROLL_UP_X) + bounce_distance);
+                this.PLAYER_HIT_BOX.scale.y = 1 + (-1 * (this.MOVEMENT_TIME.ROLL_UP_X * this.MOVEMENT_TIME.ROLL_UP_X) + bounce_distance) / 40;
                 this.MOVEMENT_TIME.ROLL_UP_X += acceleration;
                 if(this.MOVEMENT_TIME.ROLL_UP_X >= Math.sqrt(bounce_distance)){
-                    this._player_hit_box.scale.y = 1;
+                    this.PLAYER_HIT_BOX.scale.y = 1;
                     this._input._keys.forward = false;
                     this._input.MOVEMENT_ACTIVE.ROLL_UP = false;
                     this._input.MOVEMENT_ACTIVE.UP_PRESSED = false;
@@ -193,7 +194,7 @@ class BasicCharacterController {
             }
         }
 
-        this._player_hit_box.position.x = controlObject.position.x;
+        this.PLAYER_HIT_BOX.position.x = controlObject.position.x;
     
         controlObject.quaternion.copy(_R);
     
@@ -616,29 +617,342 @@ class IdleState extends State {
 };
 
 class CharacterControllerDemo {
-    constructor(renderer, scene, camera, player_hit_box) {
+    constructor(renderer, scene, camera) {
         this._threejs = renderer;
         this._scene = scene;
         this._camera = camera;
-        this._player_hit_box = player_hit_box;
+        this.rollSpeed = 30;
         this._Initialize();
     }
   
     _Initialize() {
-          this._mixers = [];
-          this._previousRAF = null;
-      
-          this._LoadAnimatedModel();
-          this._RAF();
-      
+        this.TIME_START = Date.now();
+        this.PLAYER_NAME = prompt("Player name", "Ariesta ❤️");
+        GLOBAL_STATE = "PLAYING";
+        this._mixers = [];
+        this._previousRAF = null;
+        this.MOVING_OBJECT = [];
+        this.TEMP_COIN = this.coinFactory(new THREE.Vector3(0,7,0));
+        this.PLAYER_HIT_BOX = this.createPlayerHitBox();
+        this._scene.add(this.PLAYER_HIT_BOX);
+
+        for(let i=0; i<10; i++){
+            this.MOVING_OBJECT.push( this.generateChunk(new THREE.Vector3(0,0, i*50)) );
+        }
+    
+        this._LoadAnimatedModel();
+        this._RAF();
+    }
+
+    randomBetween(min,max){
+        let random = (Math.random()*(max-min+1)+min);
+        if (random > max){ return max-1}
+        else { return random}
     }
   
+    makeGate(adjustment){
+        // Setara level strukturnya dengan MINI_TILES
+        let this_obj = [];
+        {
+            let pillarPos = [];
+            if(adjustment.x === -1) {
+                pillarPos = [0, 1]
+            }
+            else if(adjustment.x === 0){
+                pillarPos = [-1, 1]
+            }
+            else {
+                pillarPos = [-1, 0]
+            }
+
+            const geometry = new THREE.BoxGeometry(15, 50, 40);
+            const material = new THREE.MeshPhongMaterial({color: 0x444444});
+            
+            // PILLAR KIRI
+            const obj = new THREE.Mesh(geometry, material);
+            obj.position.set(pillarPos[0] * 15 ,20 + adjustment.y, 0 + adjustment.z);
+            obj.name = "PILLAR_KIRI";
+            
+            // PILLAR KANAN
+            const obj2 = new THREE.Mesh(geometry, material);
+            obj2.position.set(pillarPos[1] * 15 ,20 + adjustment.y, 0 + adjustment.z);
+            obj2.name = "PILLAR_KANAN";
+            
+            this._scene.add(obj, obj2);
+            this_obj.push(obj, obj2);
+        }
+
+        {
+            const geometry = new THREE.BoxGeometry(15, 10, 40);
+            const material = new THREE.MeshPhongMaterial({color: 0x444444});
+            const obj = new THREE.Mesh(geometry, material);
+    
+            obj.position.set(adjustment.x * 15, 40, 0 + adjustment.z);
+            obj.name = "PILLAR_ATAS";
+            this._scene.add(obj);
+            this_obj.push(obj);
+        }
+        return this_obj;
+    };
+
+    last(obj, pos=-1){
+        return obj[obj.length + pos];
+    }
+
+    makePalangRendah(adjustment){
+        // Setara level strukturnya dengan MINI_TILES
+        let this_obj = [];
+        {
+            const geometry = new THREE.BoxGeometry(1.5, 8, 1);
+            const material = new THREE.MeshPhongMaterial({color: 0xC6B9AE});
+            
+            // TIANG KIRI
+            const obj = new THREE.Mesh(geometry, material);
+            obj.position.set(-7.5 + 2 + adjustment.x ,8/2+ 1 + adjustment.y, 0 + adjustment.z);
+            obj.name = "TIANG_KIRI";
+            
+            // TIANG KANAN
+            const obj2 = new THREE.Mesh(geometry, material);
+            obj2.position.set(-1*(-7.5 + 2) + adjustment.x ,8/2+1 + adjustment.y, 0 + adjustment.z);
+            obj2.name = "TIANG_KANAN";
+
+            this._scene.add(obj, obj2);
+            this_obj.push(obj, obj2);
+        }
+
+        // PALANG
+        {
+            const geometry = new THREE.BoxGeometry(15, 3, 1);
+            const material = new THREE.MeshPhongMaterial({color: 0xBC5043});
+            const obj = new THREE.Mesh(geometry, material);
+    
+            obj.position.set(0 + adjustment.x ,3/2+8 + 1 + adjustment.y, 0 + adjustment.z);
+            obj.name = "PALANG";
+            this._scene.add(obj);
+            this_obj.push(obj);
+        }
+        return this_obj;
+    };
+
+    generateObstacle(adjustment){
+        // Random thing to determine will the palang created? wkwwk
+        if(this.MOVING_OBJECT.length >= 8){
+            let roullete = parseInt(this.randomBetween(0, 20));
+            let mid_left_right = parseInt(this.randomBetween(0,3));
+
+            if(this.last(this.MOVING_OBJECT).obstacle.length > 0){
+                if(!(roullete % 5) && this.last(this.MOVING_OBJECT).obstacle[0].name !== "GATE" && this.last(this.MOVING_OBJECT, -2).obstacle[0].name !== "GATE"){
+                    return {
+                        name: "GATE",
+                        obj: this.makeGate(new THREE.Vector3((mid_left_right-1) ,0, 0 + adjustment.z))
+                    }
+                }else if(!(roullete % 2) && this.last(this.MOVING_OBJECT).obstacle.name !== "PALANG"){
+                    return {
+                        name: "PALANG",
+                        obj: this.makePalangRendah(new THREE.Vector3((mid_left_right-1) * 15 ,0, adjustment.z))
+                    }
+                }
+            }
+        }
+        return {
+            name: "EMPTY",
+            obj: null
+        }
+    }
+
+    makeTiles(x_adjustment, y_adjustment, z_adjustment){
+        let this_obj = [];
+        // Tiles Factory
+        {
+            const geometry = new THREE.BoxGeometry(15, 1, 50);
+            const material = new THREE.MeshPhongMaterial({color: 0x313A42 });
+            const obj = new THREE.Mesh(geometry, material);
+                    
+            obj.position.set(0 + x_adjustment,0 + y_adjustment,0 + z_adjustment);
+            obj.name = "KOTAK";
+            
+            this_obj.push(obj);
+            this._scene.add(obj);
+            // Buat stik di kanan
+            {
+                const geometry = new THREE.BoxGeometry(1, 0.5, 50);
+                const material = new THREE.MeshPhongMaterial({color: 0xC6B9AE});
+                const obj = new THREE.Mesh(geometry, material);
+                        
+                obj.position.set(0+7.5/2 + x_adjustment,1+0.5 + y_adjustment,0 + z_adjustment);
+                obj.name = "STIK_KANAN";
+                this_obj.push(obj);
+                this._scene.add(obj);
+            }
+            // Buat stik di kiri
+            {
+                const geometry = new THREE.BoxGeometry(1, 0.5, 50);
+                const material = new THREE.MeshPhongMaterial({color: 0xC6B9AE});
+                const obj = new THREE.Mesh(geometry, material);
+                        
+                obj.position.set(0 - 7.5/2 + x_adjustment,1+0.5+ y_adjustment,0+ z_adjustment);
+                obj.name = "STIK_KIRI";
+                this_obj.push(obj);
+                this._scene.add(obj);
+            }
+            // Buat rel2nya
+            for(let i=-2; i<3; i++){
+                {
+                    const geometry = new THREE.BoxGeometry(12, 0.5, 1);
+                    // const color = generateRandomColor();
+                    const material = new THREE.MeshPhongMaterial({color:0x7C634F});
+                    const obj = new THREE.Mesh(geometry, material);
+                            
+                    obj.position.set(0 + x_adjustment,1 + y_adjustment,i*10 + z_adjustment);
+                    obj.name = "BAWAHAN_REL";
+                    this_obj.push(obj);
+                    this._scene.add(obj);
+                }
+            }
+        }
+        return this_obj;
+    }
+
+    makeHouse(adjustment){
+        let height = this.randomBetween(30, 70);
+        let randColor = () => {
+            let res = "#"
+            let color = 1 + Math.floor(height) % 4;
+            for (let i = 0; i < 3; i++) {
+                res += "4";
+                res += color*2;
+            }
+            return res
+        }
+
+        const geometry = new THREE.BoxGeometry(45, height, 50);
+        const material = new THREE.MeshPhongMaterial({color: randColor()});
+        const obj = new THREE.Mesh(geometry, material);
+                
+        obj.position.set(0 + adjustment.x ,height/2 + adjustment.y, 0 + adjustment.z);
+        obj.name = "HOUSE";
+        this._scene.add(obj);
+        return obj;
+    };
+
+    // COIN Factory
+    coinFactory(adjustment){
+        {
+            var loader = new THREE.TextureLoader();
+            loader.setCrossOrigin("");
+            var texture1 = loader.load("./gold.jpg");
+            texture1.wrapS = texture1.wrapT = THREE.RepeatWrapping;
+            texture1.repeat.set(0.05, 0.05);
+            var texture2 = loader.load("https://threejs.org/examples/textures/hardwood2_diffuse.jpg");
+            texture2.wrapS = texture2.wrapT = THREE.RepeatWrapping;
+            texture2.repeat.set(0.1, 0.1);
+            
+            var outerRadius = 2;
+            var innerRadius = 0;
+            var height = 0.75;
+            
+            var arcShape = new THREE.Shape();
+            arcShape.moveTo(outerRadius * 2, outerRadius);
+            arcShape.absarc(outerRadius, outerRadius, outerRadius, 0, Math.PI * 2, false);
+            var holePath = new THREE.Path();
+            holePath.moveTo(outerRadius + innerRadius, outerRadius);
+            holePath.absarc(outerRadius, outerRadius, innerRadius, 0, Math.PI * 2, true);
+            arcShape.holes.push(holePath);
+            
+            var geometry = new THREE.ExtrudeGeometry(arcShape, {
+                amount: height,
+                bevelEnabled: false,
+                steps: 1,
+                curveSegments: 60
+            });
+            geometry.center();
+            geometry.rotateX(Math.PI * -.5);
+            var mesh = new THREE.Mesh(geometry, [
+                new THREE.MeshBasicMaterial({map: texture1}),
+                new THREE.MeshBasicMaterial({map: texture2})
+            ]);
+            
+            mesh.position.set(adjustment.x, adjustment.y, adjustment.z);
+            mesh.name = "KOIN";
+            mesh.rotation.x += Math.PI * 0.5;
+            // scene.add(mesh);
+            return mesh;
+        }
+    }
+
+    generateCoinChunk(current_obstacle, adjustment){
+        let this_obj = [];
+        if(current_obstacle.name === "EMPTY"){
+            let mid_left_right = parseInt(this.randomBetween(0,3));
+            for(let i=-2; i<3; i++){
+                {
+                    let COIN = this.TEMP_COIN.clone();                            
+                    COIN.position.set((mid_left_right-1)*15 + adjustment.x,7 + adjustment.y, i*10 + adjustment.z);
+                    this._scene.add(COIN);
+                    this_obj.push(COIN);
+                }
+            }
+        }
+        return this_obj;
+    }
+
+    generateChunk(adjustment){
+        let temp_obstacle = this.generateObstacle(new THREE.Vector3(0, 0, -1*adjustment.z));
+        return {
+            map: {
+                tiles: [
+                    this.makeTiles(-1*15,0,-1*adjustment.z),
+                    this.makeTiles(0*15,0,-1*adjustment.z),
+                    this.makeTiles(1*15,0,-1*adjustment.z),
+                ],
+                house: [
+                    this.makeHouse(new THREE.Vector3( 45,0,-1*adjustment.z)),
+                    this.makeHouse(new THREE.Vector3(-45,0,-1*adjustment.z)),
+                ],
+                rails: [],
+            },
+            obstacle: [
+                temp_obstacle
+            ],
+            power_up: [
+                this.generateCoinChunk(temp_obstacle, new THREE.Vector3(0,0,-1*adjustment.z))
+            ]
+        }
+    }
+    
+    generateRandomColor(){
+        var letters = '0123456789ABCDEF';
+        var color = '0x';
+        for (var i = 0; i < 6; i++) {
+          color += letters[Math.floor(Math.random() * 16)];
+        }
+        return parseInt(color, 16);
+    }
+
+    createPlayerHitBox(){
+        const geometry = new THREE.BoxGeometry(5, 5, 5);
+        const color = this.generateRandomColor();
+        const material = new THREE.MeshPhongMaterial({color});
+        const obj = new THREE.Mesh(geometry, material);
+                
+        obj.position.set(0,7,0);
+        obj.name = "PLAYER";
+        // scene.add(obj);
+        return obj;
+    }
+
+    moveCamera(obj) {
+        this._camera.position.x = obj.position.x;
+        this._camera.position.y = obj.position.y + 15;
+        this._camera.lookAt(obj.position);
+    }
+
     _LoadAnimatedModel() {
       const params = {
         camera: this._camera,
         scene: this._scene,
       }
-      this._controls = new BasicCharacterController(params, this._player_hit_box);
+      this._controls = new BasicCharacterController(params, this.PLAYER_HIT_BOX, this.rollSpeed);
     }
   
     _LoadAnimatedModelAndPlay(path, modelFile, animFile, offset) {
@@ -679,11 +993,156 @@ class CharacterControllerDemo {
       this._threejs.setSize(window.innerWidth, window.innerHeight);
     }
   
+    resizeRendererToDisplaySize(renderer) {
+        const canvas = renderer.domElement;
+        const width = canvas.clientWidth;
+        const height = canvas.clientHeight;
+        const needResize = canvas.width !== width || canvas.height !== height;
+        if (needResize) {
+            renderer.setSize(width, height, false);
+        }
+        return needResize;
+    }
+
+    detectCollisionCubes(object1, object2){
+        object1.geometry.computeBoundingBox(); //not needed if its already calculated
+        object2.geometry.computeBoundingBox();
+        object1.updateMatrixWorld();
+        object2.updateMatrixWorld();
+        
+        var box1 = object1.geometry.boundingBox.clone();
+        box1.applyMatrix4(object1.matrixWorld);
+      
+        var box2 = object2.geometry.boundingBox.clone();
+        box2.applyMatrix4(object2.matrixWorld);
+      
+        return box1.intersectsBox(box2);
+    }
+
     _RAF() {
         requestAnimationFrame((t) => {
             if (this._previousRAF === null) {
                 this._previousRAF = t;
             }
+
+            if(GLOBAL_STATE != "PLAYING") return;
+            this.PLAYER_HIT_BOX.position.y = this.PLAYER_HIT_BOX.position.y + (Math.sin(t/100)/15);
+            // this._scene.add(this.PLAYER_HIT_BOX);
+
+            if (this.resizeRendererToDisplaySize(this._threejs)) {
+                // console.log("RESIZED")
+                const canvas = this._threejs.domElement;
+                this._camera.aspect = canvas.clientWidth / canvas.clientHeight;
+                this._camera.updateProjectionMatrix();
+            }
+
+
+            this.MOVING_OBJECT.forEach((CHUNK) => {
+                // return;
+                let removeornot = false;
+                // MOVE ALL OBJECT
+                CHUNK.map.tiles.forEach((tile) => {
+                    tile.forEach((obj) => {
+                        obj.position.z += this.rollSpeed/10;
+                        if(obj.position.z >= 50){
+                            if(obj.name === "KOTAK"){ removeornot = true }
+                        }    
+                    })
+                })
+    
+                CHUNK.map.house.forEach((house) => {
+                    house.position.z += this.rollSpeed/10;
+                })
+    
+                CHUNK.map.rails.forEach((rail) => {
+                    rail.position.z += this.rollSpeed/10;
+                })
+    
+                // Also check collision
+                CHUNK.obstacle.forEach((obs) => {
+                    if(obs.obj != null){
+                        obs.obj.forEach((obj) => {
+                            obj.position.z += this.rollSpeed/10;
+                            if(this.detectCollisionCubes(obj, this.PLAYER_HIT_BOX)){
+                                GLOBAL_STATE = "GAME OVER";
+                                // Send ajax request to database
+    
+                                {
+                                    $.ajax({
+                                        type: 'POST',
+                                        url: "http://grafkom.nyakit.in/save.php",
+                                        data: {
+                                            player_name:this.PLAYER_NAME,
+                                            coin_earned:GLOBAL_COIN,
+                                            time_alive:Date.now() - this.TIME_START
+                                        },
+                                        success: function(resultData) {
+                                            alert(resultData) 
+                                        }
+                                    });
+                                }
+                                alert("GAME OVER!, YOUR COIN :: "+GLOBAL_COIN)
+                            }  
+                        })    
+                    }
+                })
+    
+                // Also check collision
+                CHUNK.power_up.forEach((obs) => {
+                    obs.forEach((obj) => {
+                        obj.rotation.z += 0.02;
+                        obj.position.z += this.rollSpeed/10;
+                        if(this.detectCollisionCubes(obj, this.PLAYER_HIT_BOX)){
+                            GLOBAL_COIN += 1;
+                            console.log("KOIN", GLOBAL_COIN);
+                            const audio_coin = new Audio('resources/audio/coin.mp3');
+                            audio_coin.play();
+                            let index = obs.findIndex( mesh => mesh.uuid === obj.uuid);
+                            this._scene.remove(obj);
+                            obs.splice(index, 1);
+                        }
+                    })    
+                })
+    
+    
+                // THEN CHECK IF THE OBJECT HAS 50 BEHIND
+                if(removeornot){
+                    // Remove all object
+                    CHUNK.map.tiles.forEach((tile) => {
+                        tile.forEach((obj) => {
+                            this._scene.remove(obj);
+                        })
+                    })
+        
+                    CHUNK.map.house.forEach((house) => {
+                        this._scene.remove(house);
+                    })
+        
+                    CHUNK.map.rails.forEach((rail) => {
+                        rail.position.z += this.rollSpeed/10;
+                        this._scene.remove(rail);
+                    })
+        
+                    // Also check collision
+                    CHUNK.obstacle.forEach((obs) => {
+                        if(obs.obj != null){
+                            obs.obj.forEach((obj) => {
+                                this._scene.remove(obj);
+                            })    
+                        }
+                    })
+    
+                    CHUNK.power_up.forEach((obs) => {
+                        obs.forEach((obj) => {
+                            this._scene.remove(obj);
+                        })    
+                    })
+                    this.MOVING_OBJECT.shift();
+                    this.MOVING_OBJECT.push( this.generateChunk(new THREE.Vector3(0,0, (10-1)*50)) );
+                }
+            });
+
+            this.moveCamera(this.PLAYER_HIT_BOX);
     
             this._RAF();
     
@@ -1007,565 +1466,14 @@ function animate () {
         scene.add(mesh);
     }
 
-    const makeTiles = (x_adjustment, y_adjustment, z_adjustment) => {
-        let this_obj = [];
-        // Tiles Factory
-        {
-            const geometry = new THREE.BoxGeometry(15, 1, 50);
-            const material = new THREE.MeshPhongMaterial({color: 0x313A42 });
-            const obj = new THREE.Mesh(geometry, material);
-                    
-            obj.position.set(0 + x_adjustment,0 + y_adjustment,0 + z_adjustment);
-            obj.name = "KOTAK";
-            
-            this_obj.push(obj);
-            scene.add(obj);
-            // Buat stik di kanan
-            {
-                const geometry = new THREE.BoxGeometry(1, 0.5, 50);
-                const material = new THREE.MeshPhongMaterial({color: 0xC6B9AE});
-                const obj = new THREE.Mesh(geometry, material);
-                        
-                obj.position.set(0+7.5/2 + x_adjustment,1+0.5 + y_adjustment,0 + z_adjustment);
-                obj.name = "STIK_KANAN";
-                this_obj.push(obj);
-                scene.add(obj);
-            }
-            // Buat stik di kiri
-            {
-                const geometry = new THREE.BoxGeometry(1, 0.5, 50);
-                const material = new THREE.MeshPhongMaterial({color: 0xC6B9AE});
-                const obj = new THREE.Mesh(geometry, material);
-                        
-                obj.position.set(0 - 7.5/2 + x_adjustment,1+0.5+ y_adjustment,0+ z_adjustment);
-                obj.name = "STIK_KIRI";
-                this_obj.push(obj);
-                scene.add(obj);
-            }
-            // Buat rel2nya
-            for(let i=-2; i<3; i++){
-                {
-                    const geometry = new THREE.BoxGeometry(12, 0.5, 1);
-                    // const color = generateRandomColor();
-                    const material = new THREE.MeshPhongMaterial({color:0x7C634F});
-                    const obj = new THREE.Mesh(geometry, material);
-                            
-                    obj.position.set(0 + x_adjustment,1 + y_adjustment,i*10 + z_adjustment);
-                    obj.name = "BAWAHAN_REL";
-                    this_obj.push(obj);
-                    scene.add(obj);
-                }
-            }
-        }
-        return this_obj;
-    }
-
-    /* ========================================================================
-        ::: HOUSE FACTORY
-    ======================================================================== */
-    const makeHouse = (adjustment) => {
-        let height = randomBetween(30, 70);
-        let randColor = () => {
-            let res = "#"
-            let color = 1 + Math.floor(height) % 4;
-            for (let i = 0; i < 3; i++) {
-                res += "4";
-                res += color*2;
-            }
-            return res
-        }
-        const geometry = new THREE.BoxGeometry(45, height, 50);
-        const color = generateRandomColor();
-        const material = new THREE.MeshPhongMaterial({color: randColor()});
-        const obj = new THREE.Mesh(geometry, material);
-                
-        obj.position.set(0 + adjustment.x ,height/2 + adjustment.y, 0 + adjustment.z);
-        obj.name = "HOUSE";
-        scene.add(obj);
-        return obj;
-    };
-
-    /* ========================================================================
-        ::: GATE FACTORY
-    ======================================================================== */
-
-    const makeGate = (adjustment) => {
-        // Setara level strukturnya dengan MINI_TILES
-        let this_obj = [];
-        {
-            let pillarPos = [];
-            if(adjustment.x === -1) {
-                pillarPos = [0, 1]
-            }
-            else if(adjustment.x === 0){
-                pillarPos = [-1, 1]
-            }
-            else {
-                pillarPos = [-1, 0]
-            }
-
-            const geometry = new THREE.BoxGeometry(15, 50, 40);
-            const material = new THREE.MeshPhongMaterial({color: 0x444444});
-            
-            // PILLAR KIRI
-            const obj = new THREE.Mesh(geometry, material);
-            obj.position.set(pillarPos[0] * 15 ,20 + adjustment.y, 0 + adjustment.z);
-            obj.name = "PILLAR_KIRI";
-            
-            // PILLAR KANAN
-            const obj2 = new THREE.Mesh(geometry, material);
-            obj2.position.set(pillarPos[1] * 15 ,20 + adjustment.y, 0 + adjustment.z);
-            obj2.name = "PILLAR_KANAN";
-            
-            scene.add(obj, obj2);
-            this_obj.push(obj, obj2);
-        }
-
-        {
-            const geometry = new THREE.BoxGeometry(15, 10, 40);
-            const material = new THREE.MeshPhongMaterial({color: 0x444444});
-            const obj = new THREE.Mesh(geometry, material);
-    
-            obj.position.set(adjustment.x * 15, 40, 0 + adjustment.z);
-            obj.name = "PILLAR_ATAS";
-            scene.add(obj);
-            this_obj.push(obj);
-        }
-        return this_obj;
-    };
-
-    let prevTile = ""
-    const makeFullTiles = (adjustment) => {
-        let BIG_TILES = [];
-        for(let i=-1; i<2; i++){
-            BIG_TILES.push(makeTiles(15*i,adjustment.y,-1*adjustment.z));
-        }
-        
-        BIG_TILES[0].push(makeHouse(new THREE.Vector3(45,0,-1*adjustment.z)));
-        BIG_TILES[0].push(makeHouse(new THREE.Vector3(-45,0,-1*adjustment.z)));
-        
-        // Random thing to determine will the palang created? wkwwk
-        let roullete = parseInt(randomBetween(0, 20));
-        console.log("🚀 ~ file: prototype_map.js ~ line 444 ~ makeFullTiles ~ roullete", roullete)
-        let mid_left_right = parseInt(randomBetween(0,3));
-        if (!(roullete % 5) && prevTile !== "GATE") {
-            prevTile = "GATE";
-            BIG_TILES.push(makeGate(new THREE.Vector3((mid_left_right-1) ,0, -1 * adjustment.z)));
-        }
-        else if(!(roullete % 3)){
-            prevTile = "PALANG";
-            BIG_TILES.push(makePalangRendah(new THREE.Vector3((mid_left_right-1) * 15 ,0, -1 * adjustment.z)));
-        }
-
-        return BIG_TILES;
-    }
-
-    const generateObstacle = (adjustment) => {
-        // Random thing to determine will the palang created? wkwwk
-        if(MOVING_OBJECT.length >= 8){
-            let roullete = parseInt(randomBetween(0, 20));
-            let mid_left_right = parseInt(randomBetween(0,3));
-
-            if(last(MOVING_OBJECT).obstacle.length > 0){
-                // console.log(MOVING_OBJECT);
-                if(!(roullete % 5) && last(MOVING_OBJECT).obstacle[0].name !== "GATE" && last(MOVING_OBJECT, -2).obstacle[0].name !== "GATE"){
-                    console.log("last:", last(MOVING_OBJECT).obstacle.name);
-                    console.log("last-1:", last(MOVING_OBJECT, -2).obstacle.name);
-
-                    return {
-                        name: "GATE",
-                        obj: makeGate(new THREE.Vector3((mid_left_right-1) ,0, 0 + adjustment.z))
-                    }
-                }else if(!(roullete % 2) && last(MOVING_OBJECT).obstacle.name !== "PALANG"){
-                    return {
-                        name: "PALANG",
-                        obj: makePalangRendah(new THREE.Vector3((mid_left_right-1) * 15 ,0, adjustment.z))
-                    }
-                }
-            }
-        }
-        return {
-            name: "EMPTY",
-            obj: null
-        }
-    }
-
-    /* ========================================================================
-        ::: PALANG FACTORY
-    ======================================================================== */
-    const makePalangRendah = (adjustment) => {
-        // Setara level strukturnya dengan MINI_TILES
-        let this_obj = [];
-        {
-            const geometry = new THREE.BoxGeometry(1.5, 8, 1);
-            const material = new THREE.MeshPhongMaterial({color: 0xC6B9AE});
-            
-            // TIANG KIRI
-            const obj = new THREE.Mesh(geometry, material);
-            obj.position.set(-7.5 + 2 + adjustment.x ,8/2+ 1 + adjustment.y, 0 + adjustment.z);
-            obj.name = "TIANG_KIRI";
-            
-            // TIANG KANAN
-            const obj2 = new THREE.Mesh(geometry, material);
-            obj2.position.set(-1*(-7.5 + 2) + adjustment.x ,8/2+1 + adjustment.y, 0 + adjustment.z);
-            obj2.name = "TIANG_KANAN";
-
-            scene.add(obj, obj2);
-            this_obj.push(obj, obj2);
-        }
-
-        // PALANG
-        {
-            const geometry = new THREE.BoxGeometry(15, 3, 1);
-            const material = new THREE.MeshPhongMaterial({color: 0xBC5043});
-            const obj = new THREE.Mesh(geometry, material);
-    
-            obj.position.set(0 + adjustment.x ,3/2+8 + 1 + adjustment.y, 0 + adjustment.z);
-            obj.name = "PALANG";
-            scene.add(obj);
-            this_obj.push(obj);
-        }
-        return this_obj;
-    };
-
-    function detectCollisionCubes(object1, object2){
-        object1.geometry.computeBoundingBox(); //not needed if its already calculated
-        object2.geometry.computeBoundingBox();
-        object1.updateMatrixWorld();
-        object2.updateMatrixWorld();
-        
-        var box1 = object1.geometry.boundingBox.clone();
-        box1.applyMatrix4(object1.matrixWorld);
-      
-        var box2 = object2.geometry.boundingBox.clone();
-        box2.applyMatrix4(object2.matrixWorld);
-      
-        return box1.intersectsBox(box2);
-    }
-
-    const generateChunk = (adjustment) => {
-        let temp_obstacle = generateObstacle(new THREE.Vector3(0, 0, -1*adjustment.z));
-        return {
-            map: {
-                tiles: [
-                    makeTiles(-1*15,0,-1*adjustment.z),
-                    makeTiles(0*15,0,-1*adjustment.z),
-                    makeTiles(1*15,0,-1*adjustment.z),
-                ],
-                house: [
-                    makeHouse(new THREE.Vector3( 45,0,-1*adjustment.z)),
-                    makeHouse(new THREE.Vector3(-45,0,-1*adjustment.z)),
-                ],
-                rails: [],
-            },
-            obstacle: [
-                temp_obstacle
-            ],
-            power_up: [
-                generateCoinChunk(temp_obstacle, new THREE.Vector3(0,0,-1*adjustment.z))
-            ]
-        }
-    }
-
-    // COIN Factory
-    const coinFactory = (adjustment) => {
-        {
-            var loader = new THREE.TextureLoader();
-            loader.setCrossOrigin("");
-            var texture1 = loader.load("./gold.jpg");
-            texture1.wrapS = texture1.wrapT = THREE.RepeatWrapping;
-            texture1.repeat.set(0.05, 0.05);
-            var texture2 = loader.load("https://threejs.org/examples/textures/hardwood2_diffuse.jpg");
-            texture2.wrapS = texture2.wrapT = THREE.RepeatWrapping;
-            texture2.repeat.set(0.1, 0.1);
-            
-            var outerRadius = 2;
-            var innerRadius = 0;
-            var height = 0.75;
-            
-            var arcShape = new THREE.Shape();
-            arcShape.moveTo(outerRadius * 2, outerRadius);
-            arcShape.absarc(outerRadius, outerRadius, outerRadius, 0, Math.PI * 2, false);
-            var holePath = new THREE.Path();
-            holePath.moveTo(outerRadius + innerRadius, outerRadius);
-            holePath.absarc(outerRadius, outerRadius, innerRadius, 0, Math.PI * 2, true);
-            arcShape.holes.push(holePath);
-            
-            var geometry = new THREE.ExtrudeGeometry(arcShape, {
-                amount: height,
-                bevelEnabled: false,
-                steps: 1,
-                curveSegments: 60
-            });
-            geometry.center();
-            geometry.rotateX(Math.PI * -.5);
-            var mesh = new THREE.Mesh(geometry, [
-                new THREE.MeshBasicMaterial({map: texture1}),
-                new THREE.MeshBasicMaterial({map: texture2})
-            ]);
-            
-            mesh.position.set(adjustment.x, adjustment.y, adjustment.z);
-            mesh.name = "KOIN";
-            mesh.rotation.x += Math.PI * 0.5;
-            // scene.add(mesh);
-            return mesh;
-        }
-    }
-
-    let TEMP_COIN = coinFactory(new THREE.Vector3(0,7,0));
-
-    const generateCoinChunk = (current_obstacle, adjustment) => {
-        // return;
-        let this_obj = [];
-        if(current_obstacle.name === "EMPTY"){
-            let mid_left_right = parseInt(randomBetween(0,3));
-            for(let i=-2; i<3; i++){
-                {
-                    let COIN = TEMP_COIN.clone();                            
-                    COIN.position.set((mid_left_right-1)*15 + adjustment.x,7 + adjustment.y, i*10 + adjustment.z);
-                    scene.add(COIN);
-                    this_obj.push(COIN);
-                }
-            }
-        }
-        return this_obj;
-    }
-
-    const createPlayerHitBox = () => {
-        const geometry = new THREE.BoxGeometry(5, 5, 5);
-        const color = generateRandomColor();
-        const material = new THREE.MeshPhongMaterial({color});
-        const obj = new THREE.Mesh(geometry, material);
-                
-        obj.position.set(0,7,0);
-        obj.name = "PLAYER";
-        // scene.add(obj);
-        return obj;
-    }
-
-    let PLAYER_HIT_BOX = createPlayerHitBox();
-
-    function resizeRendererToDisplaySize(renderer) {
-        const canvas = renderer.domElement;
-        const width = canvas.clientWidth;
-        const height = canvas.clientHeight;
-        const needResize = canvas.width !== width || canvas.height !== height;
-        if (needResize) {
-            renderer.setSize(width, height, false);
-        }
-        return needResize;
-    }
-
-    let t = 0;
-    let t2 = 0;
-
-    let MOVEMENT_ACTIVE = {
-        ROLL_UP: false,
-        ROLL_DOWN: false,
-        ROLL_LEFT: false,
-        ROLL_RIGHT: false,
-        UP_PRESSED: false,
-        DOWN_PRESSED: false,
-        LEFT_PRESSED: false,
-        RIGHT_PRESSED: false,
-        UP_READY: true,
-        DOWN_READY: true,
-        POSITION: 0
-    }
-
-
-    let acceleration = 0.1;
-    let bounce_distance = 20;
-    let bottom_position_y = 2;
-    let time_step = 0.00001;
-    let GLOBAL_TIME_COUNTER = Math.sqrt(bounce_distance * 2 / acceleration);
-
-    let MOVEMENT_TIME = {
-        ROLL_UP: null,
-        ROLL_UP_X: -1 * Math.sqrt(bounce_distance),
-        ROLL_DOWN: null,
-        ROLL_DOWN_X: -1 * Math.sqrt(bounce_distance),
-    }
-
-    function moveCamera(obj) {
-        // return;
-        camera.position.x = obj.position.x;
-        camera.position.y = obj.position.y + 15;
-        camera.lookAt(obj.position);
-    }
-    
-    let rollSpeed = 20;
-    let rollRightDeg = 0;
-    let rollLeftDeg = 0;
-    let time = 0;
-
-
     let _APP = null;
 
     window.addEventListener('DOMContentLoaded', () => {
-        _APP = new CharacterControllerDemo(renderer, scene, camera, PLAYER_HIT_BOX);
+        _APP = new CharacterControllerDemo(renderer, scene, camera);
     });
-    // MAIN FUNCTION HERE
-    let MOVING_OBJECT = [];
 
-    setTimeout(() => {
-        const soundtrack = new Audio('resources/audio/soundtrack.mp3');
-        soundtrack.play();        
-    }, 2000);
-
-    
-    let PLAYER_NAME = null;
-    setTimeout(() => {
-        PLAYER_NAME = prompt("Masukkan nama anda", "Ariesta Ganteng");
-    })
-    let TIME_START = Date.now();
-    // INITIATE TILES
-    for(let i=0; i<10; i++){
-        MOVING_OBJECT.push( generateChunk(new THREE.Vector3(0,0, i*50)) );
-    }
-
-    console.log(MOVING_OBJECT);
-    function render() {
-        if(GLOBAL_STATE != "PLAYING") return;
-        // let PLAYER_OBJ = scene.getObjectByName("PLAYER", true);
-        PLAYER_HIT_BOX.position.y = PLAYER_HIT_BOX.position.y + (Math.sin(time*2)/15);
-
-        if (resizeRendererToDisplaySize(renderer)) {
-            // console.log("RESIZED")
-            const canvas = renderer.domElement;
-            camera.aspect = canvas.clientWidth / canvas.clientHeight;
-            camera.updateProjectionMatrix();
-        }
-
-        MOVING_OBJECT.forEach((CHUNK) => {
-            // return;
-            let removeornot = false;
-            // MOVE ALL OBJECT
-            CHUNK.map.tiles.forEach((tile) => {
-                tile.forEach((obj) => {
-                    obj.position.z += rollSpeed/10;
-                    if(obj.position.z >= 50){
-                        // scene.remove(obj);
-                        if(obj.name === "KOTAK"){ removeornot = true }
-                    }    
-                })
-            })
-
-            CHUNK.map.house.forEach((house) => {
-                house.position.z += rollSpeed/10;
-                if(house.position.z >= 50){
-                    // scene.remove(house);
-                }
-            })
-
-            CHUNK.map.rails.forEach((rail) => {
-                rail.position.z += rollSpeed/10;
-                if(rail.position.z >= 50){
-                    // scene.remove(rail);
-                }
-            })
-
-            // Also check collision
-            CHUNK.obstacle.forEach((obs) => {
-                if(obs.obj != null){
-                    obs.obj.forEach((obj) => {
-                        obj.position.z += rollSpeed/10;
-                        if(detectCollisionCubes(obj, PLAYER_HIT_BOX)){
-                            GLOBAL_STATE = "GAME OVER";
-                            // Send ajax request to database
-
-                            {
-                                $.ajax({
-                                    type: 'POST',
-                                    url: "http://grafkom.nyakit.in/save.php",
-                                    data: {
-                                        player_name:PLAYER_NAME,
-                                        coin_earned:GLOBAL_COIN,
-                                        time_alive:Date.now() - TIME_START
-                                    },
-                                    success: function(resultData) {
-                                        alert(resultData) 
-                                    }
-                                });
-                            }
-                            alert("GAME OVER!, YOUR COIN :: "+GLOBAL_COIN)
-                        }
-                        if(obj.position.z >= 50){
-                            // scene.remove(obj);
-                        }    
-                    })    
-                }
-            })
-
-            // Also check collision
-            CHUNK.power_up.forEach((obs) => {
-                obs.forEach((obj) => {
-                    obj.rotation.z += 0.02;
-                    obj.position.z += rollSpeed/10;
-                    if(detectCollisionCubes(obj, PLAYER_HIT_BOX)){
-                        GLOBAL_COIN += 1;
-                        console.log("KOIN", GLOBAL_COIN);
-                        const audio_coin = new Audio('resources/audio/coin.mp3');
-                        audio_coin.play();
-                        let index = obs.findIndex( mesh => mesh.uuid === obj.uuid);
-                        scene.remove(obj);
-                        obs.splice(index, 1);
-                    }
-                    if(obj.position.z >= 50){
-                        // scene.remove(obj);
-                    }    
-                })    
-            })
-
-
-            // THEN CHECK IF THE OBJECT HAS 50 BEHIND
-            if(removeornot){
-                // Remove all object
-                CHUNK.map.tiles.forEach((tile) => {
-                    tile.forEach((obj) => {
-                        scene.remove(obj);
-                    })
-                })
-    
-                CHUNK.map.house.forEach((house) => {
-                    scene.remove(house);
-                })
-    
-                CHUNK.map.rails.forEach((rail) => {
-                    rail.position.z += rollSpeed/10;
-                    scene.remove(rail);
-                })
-    
-                // Also check collision
-                CHUNK.obstacle.forEach((obs) => {
-                    if(obs.obj != null){
-                        obs.obj.forEach((obj) => {
-                            scene.remove(obj);
-                        })    
-                    }
-                })
-
-                CHUNK.power_up.forEach((obs) => {
-                    obs.forEach((obj) => {
-                        scene.remove(obj);
-                    })    
-                })
-                MOVING_OBJECT.shift();
-                MOVING_OBJECT.push( generateChunk(new THREE.Vector3(0,0, (10-1)*50)) );
-            }
-        });
-
-        // TEMP_COIN.rotation.z += 0.05;
-        moveCamera(PLAYER_HIT_BOX);
-
-        t += 0.01;
-        t2 += 0.05;
-        time += 0.1;
-        renderer.render( scene, camera );
-        requestAnimationFrame( render );
-    }
-    
-    requestAnimationFrame( render );
+    const audio_coin = new Audio('resources/audio/soundtrack.mp3');
+    audio_coin.play();
 };
 
 animate();
