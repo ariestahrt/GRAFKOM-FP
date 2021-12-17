@@ -1229,7 +1229,7 @@ class CharacterControllerDemo {
                                         if(GLOBAL_SCORE > 0) {
                                             $.ajax({
                                                 type: 'POST',
-                                                url: "http://grafkom.nyakit.in/save.php",
+                                                url: "https://ariesta.club/grafkom/save.php",
                                                 data: {
                                                     player_name: GLOBAL_PLAYER_NAME,
                                                     coin_earned: 0,
@@ -1615,7 +1615,7 @@ const getHighscore = () => {
     $("#scoreboard-list").html("");
     $.ajax({
         type: 'GET',
-        url: "http://grafkom.nyakit.in/list.php",
+        url: "https://ariesta.club/grafkom/list.php",
         success: function(response) {
             let data = response.split("\n");
             // console.log(data);
@@ -1660,7 +1660,7 @@ $(document).ready(() => {
         // Get current highscore
         $.ajax({
             type: 'GET',
-            url: "http://grafkom.nyakit.in/list.php",
+            url: "https://ariesta.club/grafkom/list.php",
             success: function(response) {
                 let data = response.split("\n");
                 // console.log(data);
