@@ -1,12 +1,108 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Three.JS Tutorial: Character Controller</title>
-  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-  <link rel="stylesheet" type="text/css" href="base.css">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="base.css">
+    <link rel="shortcut icon" href="/resources/images/logo.png" type=image/x-icon>
+    <title>Lari Ada Wibu!</title>
+    <style>
+        .dg.ac{
+            z-index: 999 !important;
+        }
+    </style>
 </head>
-<body>
-  <script src="./main.js" type="module">
-  </script>
+<body style="margin: 0;" class="bg-gray-900">    
+    <div id="mainmenu_container" class="flex justify-center items-center absolute bg-gray-900 bg-opacity-50 backdrop-blur-sm w-screen h-screen z-50">
+        <div class="flex flex-col space-y-8 justify-center items-center bg-gray-800/80 backdrop-blur-md w-6/12 h-3/6 rounded-2xl shadow-lg shadow-pink-800/10 text-center">
+            <h1 class="text-4xl text-white font-bold">Lari Ada Wibu!!!</h1>
+            <input id="username" type="text" class="mt-1 block w-1/2 h-12 p-2 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="Your name here"
+                onchange="setLocaluser()"
+            > </input>
+            <div id="btn-start" class="px-4 py-2 bg-gray-200 rounded-xl cursor-pointer hover:bg-gray-400 w-1/2" >Start</div>
+            <div class="px-4 py-2 bg-gray-200 rounded-xl cursor-pointer hover:bg-gray-400 w-1/2" onclick="showHighscore()">Highscore</div>
+            <div class="px-4 py-2 bg-gray-200 rounded-xl cursor-pointer hover:bg-gray-400 w-1/2" onclick="showAbout()">About</div>
+        </div>
+    </div>
+
+    <div id="score_container" class="absolute w-screen h-screen z-50" style="display: none;">
+        <div class="top-4 left-8 absolute">
+            <div class="flex">
+                <p class="text-2xl text-white font-bold">Global Highscore :&nbsp;</p>
+                <p class="text-2xl text-blue-500 font-bold" id="alive_highscore"> 1280</p>
+            </div>
+                <div class="flex">
+                <p class="text-2xl text-white font-bold">Score :&nbsp;</p>
+                <p class="text-2xl text-blue-500 font-bold" id="alive_score"> 1280</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="scoreboard_container" class="flex justify-center items-center absolute bg-gray-900 bg-opacity-50 backdrop-blur-sm w-screen h-screen z-50" style="display: none;">
+        <div class="relative flex flex-col space-y-8 items-center bg-gray-800/80 backdrop-blur-md w-6/12 h-5/6 rounded-2xl shadow-lg shadow-pink-800/10">
+            <h1 class="text-4xl text-white font-bold pt-8">Scoreboard:</h1>
+            <div class="flex space-x-2 text-white"><p id="current_lastscore"></p></div>
+            <div class="cursor-pointer flex items-center bg-white hover:bg-gray-200 px-2 py-1 rounded-full absolute top-2 left-8 m-0 font-bold" onclick="showMainMenu()">◀️ Back</div>
+            <div id="scoreboard-list" class="flex flex-col text-white w-full px-16 pb-16 max-h-5/6 overflow-y-scroll">
+
+            </div>
+        </div>
+    </div>
+
+    <div id="about_container" class="flex justify-center items-center absolute bg-gray-900 bg-opacity-50 backdrop-blur-sm w-screen h-screen z-50" style="display: none;">
+        <div class="relative flex flex-col space-y-8 items-center bg-gray-800/80 backdrop-blur-md w-6/12 h-2/6 rounded-2xl shadow-lg shadow-pink-800/10">
+            <h1 class="text-4xl text-white font-bold pt-8">About:</h1>
+            <div class="cursor-pointer flex items-center bg-white hover:bg-gray-200 px-2 py-1 rounded-full absolute top-0 left-8 m-0 font-bold" onclick="showMainMenu()">◀️ Back</div>
+            <p class="text-white">
+                Created with ❤️ by B03 - Grafkom B.
+            </p>
+            <div class="w-1/2 mx-auto text-white">
+                <div class="flex justify-between">
+                    <p>Farhan Arifandi</p>
+                    <p>0511194000061</p>
+                </div>
+                <div class="flex justify-between">
+                    <p>I Made Agus Ariesta Putra</p>
+                    <p>0511194000105</p>
+                </div>
+                <div class="flex justify-between">
+                    <p>Putu Ananda Satria Adi</p>
+                    <p>0511194000113</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="canvas" style="width: 100vw; height: 100vh; display: block;" ></canvas>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script type="module" src="player.js"></script>
+    <script>
+    const showMainMenu = () => {
+        $('#mainmenu_container').show();
+        $('#scoreboard_container').hide();
+        $('#score_container').hide();
+        $('#about_container').hide();
+    }
+
+    const showHighscore = () => {
+        $('#mainmenu_container').hide();
+        $('#scoreboard_container').show();
+        $('#score_container').hide();
+        $('#about_container').hide();
+    }
+
+    const showAbout = () => {
+        $('#mainmenu_container').hide();
+        $('#scoreboard_container').hide();
+        $('#score_container').hide();
+        $('#about_container').show();
+    }
+    
+    const setLocaluser = () => {
+        localStorage.setItem("player_name", $('#username').val());
+    }
+    </script>
 </body>
 </html>

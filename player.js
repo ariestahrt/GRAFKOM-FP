@@ -6,16 +6,20 @@ import {GUI} from 'https://threejsfundamentals.org/threejs/../3rdparty/dat.gui.m
 import {FBXLoader} from 'https://cdn.jsdelivr.net/npm/three@0.118.1/examples/jsm/loaders/FBXLoader.js';
 import {GLTFLoader} from 'https://cdn.jsdelivr.net/npm/three@0.118.1/examples/jsm/loaders/GLTFLoader.js';
 
-// console.log = () => {}
+console.log = () => {}
 
-let GLOBAL_COIN = 0;
+let GLOBAL_SCORE = 0;
 let GLOBAL_STATE = "IDLE";
 let GLOBAL_RAF = {
-    speed: 10,
+    speed: 30,
 };
 
-let audio_soundtrack = new Audio('resources/audio/soundtrack.mp3');
+let GLOBAL_PLAYER_NAME = "PlayerUnknown";
 
+let SPEED_CHUNK = 0;
+let START_TIME = 0;
+
+let audio_soundtrack = new Audio('resources/audio/soundtrack.mp3');
 
 const last = (obj, pos=-1) => {
     return obj[obj.length + pos];
@@ -164,6 +168,8 @@ class BasicCharacterController {
         
         if (this._input.MOVEMENT_ACTIVE.ROLL_LEFT) {
             if(this._input.MOVEMENT_ACTIVE.POSITION > -1) {
+                const audio_swipe = new Audio('resources/audio/swipe.mp3');
+                audio_swipe.play();
                 this._input.MOVEMENT_ACTIVE.POSITION -= 1
                 this._input.MOVEMENT_ACTIVE.ROLL_LEFT = false
             }         
@@ -171,26 +177,38 @@ class BasicCharacterController {
 
         if (this._input.MOVEMENT_ACTIVE.ROLL_RIGHT) {
             if(this._input.MOVEMENT_ACTIVE.POSITION < 1) {
+                const audio_swipe = new Audio('resources/audio/swipe.mp3');
+                audio_swipe.play();
                 this._input.MOVEMENT_ACTIVE.POSITION += 1
                 this._input.MOVEMENT_ACTIVE.ROLL_RIGHT = false
             }
         }
 
         if (this._input.MOVEMENT_ACTIVE.POSITION === -1 && controlObject.position.x > -15) {
-            controlObject.position.x -= this.rollSpeed/10;
+            controlObject.position.x -= parseInt(this.rollSpeed)/10;
         } else if (this._input.MOVEMENT_ACTIVE.POSITION === 1 && controlObject.position.x < 15) {
-            controlObject.position.x += this.rollSpeed/10;
+            controlObject.position.x += parseInt(this.rollSpeed/10);
         } else if (this._input.MOVEMENT_ACTIVE.POSITION === 0 && controlObject.position.x < 0) {
-            controlObject.position.x += this.rollSpeed/10;
+            controlObject.position.x += parseInt(this.rollSpeed/10);
+            if(controlObject.position.x >= -1  && controlObject.position.x <= 0){
+                controlObject.position.x = 0;
+            }
         } else if (this._input.MOVEMENT_ACTIVE.POSITION === 0 && controlObject.position.x > 0) {
-            controlObject.position.x -= this.rollSpeed/10;
+            controlObject.position.x -= parseInt(this.rollSpeed/10);
+            if(controlObject.position.x >= 0 && controlObject.position.x <= 1){
+                controlObject.position.x = 0;
+            }
         }
+
+
 
         // JUMPING
         let bounce_distance = this.bounce_distance;
         let acceleration = this.acceleration;
         if(this._input.MOVEMENT_ACTIVE.ROLL_UP){
             if(this._input.MOVEMENT_ACTIVE.UP_READY){
+                const audio_jump = new Audio('resources/audio/jump.mp3');
+                audio_jump.play();
                 this.MOVEMENT_TIME.ROLL_UP_X = -1 * Math.sqrt(bounce_distance);
                 this._input.MOVEMENT_ACTIVE.UP_READY = false;
                 this._input.MOVEMENT_ACTIVE.DOWN_READY = false;
@@ -300,6 +318,7 @@ class BasicCharacterControllerInput {
     }
   
     _onKeyDown(event) {
+        if(GLOBAL_STATE != "PLAYING") return;
         switch (event.keyCode) {
             case 87: // w
                 this._time_pressed.forward = Date.now();
@@ -334,6 +353,7 @@ class BasicCharacterControllerInput {
     }
   
     _onKeyUp(event) {
+        if(GLOBAL_STATE != "PLAYING") return;
       switch(event.keyCode) {
         case 87: // w
             // this._keys.forward = false;
@@ -709,6 +729,7 @@ class CharacterControllerDemo {
         this._scene = scene;
         this._camera = camera;
         this.rollSpeed = 30;
+
         this._Initialize();
     }
 
@@ -721,17 +742,30 @@ class CharacterControllerDemo {
         GLOBAL_STATE = "PLAYING";
         this.TIME_START = Date.now();
         console.log("NOW PLAYING");
+        GLOBAL_SCORE = 0;
     }
   
     _Initialize() {
         this.TIME_START = Date.now();
-        if(localStorage.getItem("player_name")) {
-            this.PLAYER_NAME = localStorage.getItem("player_name");
-        } else {
-            this.PLAYER_NAME = prompt("Please enter your name", "Ariesta ❤️");
-            localStorage.setItem("player_name", this.PLAYER_NAME);
-        }
+        // if(localStorage.getItem("player_name")) {
+        //     this.PLAYER_NAME = localStorage.getItem("player_name");
+        // } else {
+        //     this.PLAYER_NAME = prompt("Please enter your name", "Ariesta ❤️");
+        //     localStorage.setItem("player_name", this.PLAYER_NAME);
+        // }
+        
+        this.HOUSE_MATERIAL = new THREE.MeshBasicMaterial({
+            map: new THREE.TextureLoader().load('resources/texture/wall.jpg'),
+        });
 
+        let BRICK_TEXTURE = new THREE.TextureLoader().load('resources/texture/brick.png');
+        // BRICK_TEXTURE.wrapS = THREE.RepeatWrapping;
+        // BRICK_TEXTURE.wrapT = THREE.RepeatWrapping;
+        BRICK_TEXTURE.repeat.set(3, 10);
+        this.GATE_MATERIAL = new THREE.MeshBasicMaterial({
+            map: BRICK_TEXTURE,
+        });
+        
         this._mixers = [];
         this._previousRAF = null;
         this.MOVING_OBJECT = [];
@@ -744,6 +778,7 @@ class CharacterControllerDemo {
         }
     
         this._LoadAnimatedModel();
+        START_TIME = Date.now();
         this._RAF();
     }
 
@@ -772,12 +807,12 @@ class CharacterControllerDemo {
             const material = new THREE.MeshPhongMaterial({color: 0x444444});
             
             // PILLAR KIRI
-            const obj = new THREE.Mesh(geometry, material);
+            const obj = new THREE.Mesh(geometry, this.GATE_MATERIAL);
             obj.position.set(pillarPos[0] * 15 ,20 + adjustment.y, 0 + adjustment.z);
             obj.name = "PILLAR_KIRI";
             
             // PILLAR KANAN
-            const obj2 = new THREE.Mesh(geometry, material);
+            const obj2 = new THREE.Mesh(geometry, this.GATE_MATERIAL);
             obj2.position.set(pillarPos[1] * 15 ,20 + adjustment.y, 0 + adjustment.z);
             obj2.name = "PILLAR_KANAN";
             
@@ -788,7 +823,7 @@ class CharacterControllerDemo {
         {
             const geometry = new THREE.BoxGeometry(15, 10, 40);
             const material = new THREE.MeshPhongMaterial({color: 0x444444});
-            const obj = new THREE.Mesh(geometry, material);
+            const obj = new THREE.Mesh(geometry, this.GATE_MATERIAL);
     
             obj.position.set(adjustment.x * 15, 40, 0 + adjustment.z);
             obj.name = "PILLAR_ATAS";
@@ -928,9 +963,10 @@ class CharacterControllerDemo {
             return res
         }
 
+
         const geometry = new THREE.BoxGeometry(45, height, 50);
-        const material = new THREE.MeshPhongMaterial({color: randColor()});
-        const obj = new THREE.Mesh(geometry, material);
+        // const material = new THREE.MeshPhongMaterial({color: randColor(), envMap: textureCube});
+        const obj = new THREE.Mesh(geometry, this.HOUSE_MATERIAL);
                 
         obj.position.set(0 + adjustment.x ,height/2 + adjustment.y, 0 + adjustment.z);
         obj.name = "HOUSE";
@@ -1045,6 +1081,7 @@ class CharacterControllerDemo {
     }
 
     moveCamera(obj) {
+        // return;
         this._camera.position.x = obj.position.x;
         this._camera.position.y = obj.position.y + 15;
         this._camera.lookAt(obj.position);
@@ -1123,160 +1160,166 @@ class CharacterControllerDemo {
     }
 
     _RAF() {
-        requestAnimationFrame((t) => {
-            if (this._previousRAF === null) {
-                this._previousRAF = t;
-            }
-
-            console.log("GLOBAL_STATE", GLOBAL_STATE);
-            this.PLAYER_HIT_BOX.position.y = this.PLAYER_HIT_BOX.position.y + (Math.sin(t/100)/15);
-            // this._scene.add(this.PLAYER_HIT_BOX);
-
-            if (this.resizeRendererToDisplaySize(this._threejs)) {
-                // console.log("RESIZED")
-                const canvas = this._threejs.domElement;
-                this._camera.aspect = canvas.clientWidth / canvas.clientHeight;
-                this._camera.updateProjectionMatrix();
-            }
-
-
-            this.MOVING_OBJECT.forEach((CHUNK) => {
-                // return;
-                let removeornot = false;
-                // MOVE ALL OBJECT
-                CHUNK.map.tiles.forEach((tile) => {
-                    tile.forEach((obj) => {
-                        obj.position.z += this.rollSpeed/10;
-                        if(obj.position.z >= 50){
-                            if(obj.name === "KOTAK"){ removeornot = true }
-                        }    
-                    })
-                })
+        setTimeout(() =>{
+            // requestAnimationFrame(() => {
+                let t = Date.now() - START_TIME;
+                if (this._previousRAF === null) {
+                    this._previousRAF = t;
+                }
     
-                CHUNK.map.house.forEach((house) => {
-                    house.position.z += this.rollSpeed/10;
-                })
+                console.log("GLOBAL_STATE", GLOBAL_STATE);                    
+                this.PLAYER_HIT_BOX.position.y = this.PLAYER_HIT_BOX.position.y + (Math.sin(t/100)/15);
+                // this._scene.add(this.PLAYER_HIT_BOX);
     
-                CHUNK.map.rails.forEach((rail) => {
-                    rail.position.z += this.rollSpeed/10;
-                })
-    
-                // Also check collision
-                CHUNK.obstacle.forEach((obs) => {
-                    if(obs.obj != null){
-                        obs.obj.forEach((obj) => {
-                            obj.position.z += this.rollSpeed/10;
-                            
-                            if(GLOBAL_STATE == "PLAYING"){
-                                let curScore = Math.floor((Date.now() - this.TIME_START)/ 10)
-                                $("#alive_score").html(curScore);
-                                $("#coin_score").html(GLOBAL_COIN);
-                                if(curScore > Number($("#alive_highscore").html())) {
-                                    $("#alive_highscore").html(curScore);
-                                };
-                                if(GLOBAL_COIN > Number($("#coin_highscore").html())) {
-                                    $("#coin_highscore").html(GLOBAL_COIN)
-                                }
-
-                            }
-                            if(this.detectCollisionCubes(obj, this.PLAYER_HIT_BOX)){
-                                $("#mainmenu_container").show()
-                                $("#score_container").hide()
-                                let curScore = Math.floor((Date.now() - this.TIME_START)/ 10)
-                                
-                                if(GLOBAL_STATE == "PLAYING"){
-                                    if(curScore >= Number($("#alive_highscore").html())) {
-                                        localStorage.setItem("alive_highscore", curScore);
-                                    };
-                                    if(GLOBAL_COIN >= Number($("#coin_highscore").html())) {
-                                        localStorage.setItem("coin_highscore", GLOBAL_COIN);
-                                    }
-                                    console.log("🚀 ~ file: player.js ~ line 1169 ~ CharacterControllerDemo ~ obs.obj.forEach ~", Number($("#coin_highscore").html()))
-                                    
-                                    $.ajax({
-                                        type: 'POST',
-                                        url: "http://grafkom.nyakit.in/save.php",
-                                        data: {
-                                            player_name: this.PLAYER_NAME,
-                                            coin_earned: GLOBAL_COIN,
-                                            time_alive: curScore
-                                        },
-                                        success: function(resultData) {
-                                            console.log(resultData);
-                                        }
-                                    });
-                                }
-                                GLOBAL_STATE = "GAME OVER";
-                                GLOBAL_COIN = 0;
-                                // alert("GAME OVER!, YOUR COIN :: "+GLOBAL_COIN)
-                            }  
-                        })    
-                    }
-                })
-    
-                // Also check collision
-                CHUNK.power_up.forEach((obs) => {
-                    obs.forEach((obj) => {
-                        obj.rotation.z += 0.02;
-                        obj.position.z += this.rollSpeed/10;
-                        if(this.detectCollisionCubes(obj, this.PLAYER_HIT_BOX) && GLOBAL_STATE === "PLAYING"){
-                            GLOBAL_COIN += 1;
-                            console.log("KOIN", GLOBAL_COIN);
-                            const audio_coin = new Audio('resources/audio/coin.mp3');
-                            audio_coin.play();
-                            let index = obs.findIndex( mesh => mesh.uuid === obj.uuid);
-                            this._scene.remove(obj);
-                            obs.splice(index, 1);
-                        }
-                    })    
-                })
+                if (this.resizeRendererToDisplaySize(this._threejs)) {
+                    // console.log("RESIZED")
+                    const canvas = this._threejs.domElement;
+                    this._camera.aspect = canvas.clientWidth / canvas.clientHeight;
+                    this._camera.updateProjectionMatrix();
+                }
     
     
-                // THEN CHECK IF THE OBJECT HAS 50 BEHIND
-                if(removeornot){
-                    // Remove all object
+                this.MOVING_OBJECT.forEach((CHUNK) => {
+                    // return;
+                    let removeornot = false;
+                    // MOVE ALL OBJECT
                     CHUNK.map.tiles.forEach((tile) => {
                         tile.forEach((obj) => {
-                            this._scene.remove(obj);
+                            obj.position.z += this.rollSpeed/10;
+                            if(obj.position.z >= 50){
+                                if(obj.name === "KOTAK"){ removeornot = true }
+                            }    
                         })
                     })
         
                     CHUNK.map.house.forEach((house) => {
-                        this._scene.remove(house);
+                        house.position.z += this.rollSpeed/10;
                     })
         
                     CHUNK.map.rails.forEach((rail) => {
                         rail.position.z += this.rollSpeed/10;
-                        this._scene.remove(rail);
                     })
         
                     // Also check collision
                     CHUNK.obstacle.forEach((obs) => {
                         if(obs.obj != null){
                             obs.obj.forEach((obj) => {
-                                this._scene.remove(obj);
+                                obj.position.z += this.rollSpeed/10;
+                                
+                                if(GLOBAL_STATE == "PLAYING"){
+                                    // let curScore = Math.floor((Date.now() - this.TIME_START)/ 10)
+                                    $("#alive_score").html(GLOBAL_SCORE);
+                                    // $("#coin_score").html(GLOBAL_COIN);
+                                    if(GLOBAL_SCORE > Number($("#alive_highscore").html())) {
+                                        $("#alive_highscore").html(GLOBAL_SCORE);
+                                    };
+    
+                                }
+                                if(this.detectCollisionCubes(obj, this.PLAYER_HIT_BOX)){
+                                    $("#scoreboard_container").show()
+                                    $("#score_container").hide()
+                                    // let curScore = Math.floor((Date.now() - this.TIME_START)/ 10)
+                                    
+                                    if(GLOBAL_STATE == "PLAYING"){
+                                        if(GLOBAL_SCORE >= Number($("#alive_highscore").html())) {
+                                            localStorage.setItem("alive_highscore", GLOBAL_SCORE);
+                                        };
+                                        console.log("🚀 ~ file: player.js ~ line 1169 ~ CharacterControllerDemo ~ obs.obj.forEach ~", Number($("#coin_highscore").html()))
+                                        
+                                        if(GLOBAL_SCORE > 0) {
+                                            $.ajax({
+                                                type: 'POST',
+                                                url: "http://grafkom.nyakit.in/save.php",
+                                                data: {
+                                                    player_name: GLOBAL_PLAYER_NAME,
+                                                    coin_earned: 0,
+                                                    time_alive: GLOBAL_SCORE
+                                                },
+                                                success: function(resultData) {
+                                                    console.log(resultData);
+                                                    getHighscore();
+                                                }
+                                            });
+                                        }
+                                        $("#current_lastscore").html(`Game Over!, Your Score Was :: ${GLOBAL_SCORE}`);
+                                    }
+                                    GLOBAL_STATE = "GAME OVER";
+                                }  
                             })    
                         }
                     })
-    
+        
+                    // Also check collision
                     CHUNK.power_up.forEach((obs) => {
                         obs.forEach((obj) => {
-                            this._scene.remove(obj);
+                            obj.rotation.z += 0.02;
+                            obj.position.z += this.rollSpeed/10;
+                            if(this.detectCollisionCubes(obj, this.PLAYER_HIT_BOX) && GLOBAL_STATE === "PLAYING"){
+                                GLOBAL_SCORE += 2;
+                                // console.log("KOIN", GLOBAL_COIN);
+                                const audio_coin = new Audio('resources/audio/coin.mp3');
+                                audio_coin.play();
+                                let index = obs.findIndex( mesh => mesh.uuid === obj.uuid);
+                                this._scene.remove(obj);
+                                obs.splice(index, 1);
+                            }
                         })    
                     })
-                    this.MOVING_OBJECT.shift();
-                    this.MOVING_OBJECT.push( this.generateChunk(new THREE.Vector3(0,0, (10-1)*50)) );
-                }
-            });
-
-            this.moveCamera(this.PLAYER_HIT_BOX);
+        
+        
+                    // THEN CHECK IF THE OBJECT HAS 50 BEHIND
+                    if(removeornot){
+                        // 
+                        if(GLOBAL_STATE == "PLAYING"){
+                            GLOBAL_SCORE += 1;
+                        }
+                        if(SPEED_CHUNK == 0){
+                            SPEED_CHUNK = Date.now() - START_TIME;
+                            console.log(SPEED_CHUNK);
+                        }
+                        // Remove all object
+                        CHUNK.map.tiles.forEach((tile) => {
+                            tile.forEach((obj) => {
+                                this._scene.remove(obj);
+                            })
+                        })
+            
+                        CHUNK.map.house.forEach((house) => {
+                            this._scene.remove(house);
+                        })
+            
+                        CHUNK.map.rails.forEach((rail) => {
+                            this._scene.remove(rail);
+                        })
+            
+                        // Also check collision
+                        CHUNK.obstacle.forEach((obs) => {
+                            if(obs.obj != null){
+                                obs.obj.forEach((obj) => {
+                                    this._scene.remove(obj);
+                                })    
+                            }
+                        })
+        
+                        CHUNK.power_up.forEach((obs) => {
+                            obs.forEach((obj) => {
+                                this._scene.remove(obj);
+                            })    
+                        })
+                        this.MOVING_OBJECT.shift();
+                        this.MOVING_OBJECT.push( this.generateChunk(new THREE.Vector3(0,0, (10-1)*50 )) );
+                    }
+                });
     
-            this._RAF();
-    
-            this._threejs.render(this._scene, this._camera);
-            this._Step(t - this._previousRAF);
-            this._previousRAF = t;
-        });
+                this.moveCamera(this.PLAYER_HIT_BOX);
+        
+                this._RAF();
+        
+                this._threejs.render(this._scene, this._camera);
+                this._Step(t - this._previousRAF);
+                this._previousRAF = t;
+            // });
+        }, 1000/60);
     }
   
     _Step(timeElapsed) {
@@ -1568,25 +1611,67 @@ function animate () {
 
 animate();
 
+const getHighscore = () => {
+    $("#scoreboard-list").html("");
+    $.ajax({
+        type: 'GET',
+        url: "http://grafkom.nyakit.in/list.php",
+        success: function(response) {
+            let data = response.split("\n");
+            // console.log(data);
+            data.forEach((elem, index) => {
+                let current_player = JSON.parse(elem);
+                if(current_player.time_alive == 0) return;
+                console.log("SCORE " + GLOBAL_SCORE)
+                console.log("TIME " + current_player.time_alive)
+                console.log("PLAYER " + current_player.player_name)
+                console.log("NAME " + localStorage.getItem("player_name"));
+                if(GLOBAL_SCORE == current_player.time_alive && current_player.player_name == localStorage.getItem("player_name")) {
+                    $("#scoreboard-list").append(`
+                    <div class="flex justify-between text-yellow-500 font-bold"><p>${index+1}. ${current_player.player_name}</p><p>${current_player.time_alive}</p></div>
+                    `);
+                } else {
+                    $("#scoreboard-list").append(`
+                    <div class="flex justify-between"><p>${index+1}. ${current_player.player_name}</p><p>${current_player.time_alive}</p></div>
+                    `);
+                }
+                // console.log(elem);
+            });
+        }
+    })
+}
+
 $(document).ready(() => {
+    audio_soundtrack.addEventListener('ended', function() {
+        this.currentTime = 0;
+        this.play();
+    }, false);
+
+    if(localStorage.getItem("player_name")) {
+        $('#username').val(localStorage.getItem("player_name"));
+    }
+
     $('#btn-start').on('click', () => {
         // audio_soundtrack.stop();
+        GLOBAL_PLAYER_NAME = $("#username").val();
+        localStorage.setItem("player_name", $('#username').val());
         audio_soundtrack.play();
 
-        if(localStorage.getItem("coin_highscore")) {
-            $("#coin_highscore").html(localStorage.getItem("coin_highscore"))
-        } else {
-            $("#coin_highscore").html("0");
-        }
-        if(localStorage.getItem("alive_highscore")) {
-            $("#alive_highscore").html(localStorage.getItem("alive_highscore"))
-        } else {
-            $("#alive_highscore").html("0");
-        }
+        // Get current highscore
+        $.ajax({
+            type: 'GET',
+            url: "http://grafkom.nyakit.in/list.php",
+            success: function(response) {
+                let data = response.split("\n");
+                // console.log(data);
+                $("#alive_highscore").html(JSON.parse(data[0]).time_alive);
+            }
+        })
         startGame();
         $('#mainmenu_container').hide();
         $('#score_container').show();
     })
+    getHighscore();
 })
 
 function startGame() {
