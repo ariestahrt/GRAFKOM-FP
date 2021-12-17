@@ -4,9 +4,47 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
     <title>PLAYER</title>
+    <style>
+        .dg.ac{
+            z-index: 999 !important;
+        }
+    </style>
 </head>
-<body style="margin: 0;">
+<body style="margin: 0;" class="bg-gray-900">
+    <div id="mainmenu_container" class="flex justify-center items-center absolute bg-gray-900 bg-opacity-50 backdrop-blur-sm w-screen h-screen z-50">
+        <div class="flex flex-col space-y-8 justify-center items-center bg-gray-800/80 backdrop-blur-md w-6/12 h-2/6 rounded-2xl shadow-lg shadow-pink-800/10">
+            <h1 class="text-4xl text-white font-bold">Shiey Runner</h1>
+            <div id="btn-start" class="px-4 py-2 bg-gray-200 rounded-xl cursor-pointer hover:bg-gray-400" >Start</div>
+            <div class="px-4 py-2 bg-gray-200 rounded-xl cursor-pointer hover:bg-gray-400" onclick="getHighscore()">Highscore</div>
+        </div>
+    </div>
+
+    <div id="score_container" class="absolute w-screen h-screen z-50" style="display: none;">
+        <div class="top-4 left-8 absolute">
+            <div class="flex">
+                <p class="text-2xl text-white font-bold">Highscore :&nbsp;</p>
+                <p class="text-2xl text-blue-500 font-bold" id="alive_highscore"> 1280</p>
+            </div>
+                <div class="flex">
+                <p class="text-2xl text-white font-bold">Score :&nbsp;</p>
+                <p class="text-2xl text-blue-500 font-bold" id="alive_score"> 1280</p>
+            </div>
+        </div>
+
+        <div class="top-4 right-8 absolute">
+            <div class="flex">
+                <p class="text-2xl text-white font-bold">Coin Highscore :&nbsp;</p>
+                <p class="text-2xl text-yellow-500 font-bold" id="coin_highscore"> 55</p>
+            </div>
+            <div class="flex justify-end">
+                <p class="text-2xl text-white font-bold">Coins :&nbsp;</p>
+                <p class="text-2xl text-yellow-500 font-bold" id="coin_score"> 1280</p>
+            </div>
+        </div>
+    </div>
+
     <canvas id="canvas" style="width: 100vw; height: 100vh; display: block;" ></canvas>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script type="module" src="player.js"></script>

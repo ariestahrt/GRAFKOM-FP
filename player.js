@@ -9,7 +9,13 @@ import {GLTFLoader} from 'https://cdn.jsdelivr.net/npm/three@0.118.1/examples/js
 // console.log = () => {}
 
 let GLOBAL_COIN = 0;
-let GLOBAL_STATE = "PLAYING";
+let GLOBAL_STATE = "IDLE";
+let GLOBAL_RAF = {
+    speed: 10,
+};
+
+let audio_soundtrack = new Audio('resources/audio/soundtrack.mp3');
+
 
 const last = (obj, pos=-1) => {
     return obj[obj.length + pos];
@@ -31,6 +37,11 @@ class BasicCharacterController {
         this.PLAYER_HIT_BOX = player_hit_box;
         this.rollSpeed = rollSpeed;
         this._Init(params);
+    }
+
+    setRollSpeed(val){
+        this.rollSpeed = val;
+        this.acceleration = this.rollSpeed/(25/0.3);
     }
   
     _Init(params) {
@@ -103,8 +114,8 @@ class BasicCharacterController {
             loader.setPath('./resources/zombie/');
             loader.load('walk.fbx', (a) => { _OnLoad('walk', a); });
             loader.load('jump.fbx', (a) => { _OnLoad('jump', a); });
-            loader.load('run.fbx', (a) => { _OnLoad('run', a); });
-            loader.load('run.fbx', (a) => { _OnLoad('idle', a); });
+            loader.load('naruto_run.fbx', (a) => { _OnLoad('run', a); });
+            loader.load('naruto_run.fbx', (a) => { _OnLoad('idle', a); });
             loader.load('slide.fbx', (a) => { _OnLoad('slide', a); });
             loader.load('dance.fbx', (a) => { _OnLoad('dance', a); });
         });
@@ -700,17 +711,33 @@ class CharacterControllerDemo {
         this.rollSpeed = 30;
         this._Initialize();
     }
+
+    setRollSpeed(val){
+        this.rollSpeed = val;
+        this._controls.setRollSpeed(val);
+    }
+
+    startGame() {
+        GLOBAL_STATE = "PLAYING";
+        this.TIME_START = Date.now();
+        console.log("NOW PLAYING");
+    }
   
     _Initialize() {
         this.TIME_START = Date.now();
-        this.PLAYER_NAME = prompt("Player name", "Ariesta ❤️");
-        GLOBAL_STATE = "PLAYING";
+        if(localStorage.getItem("player_name")) {
+            this.PLAYER_NAME = localStorage.getItem("player_name");
+        } else {
+            this.PLAYER_NAME = prompt("Please enter your name", "Ariesta ❤️");
+            localStorage.setItem("player_name", this.PLAYER_NAME);
+        }
+
         this._mixers = [];
         this._previousRAF = null;
         this.MOVING_OBJECT = [];
         this.TEMP_COIN = this.coinFactory(new THREE.Vector3(0,7,0));
         this.PLAYER_HIT_BOX = this.createPlayerHitBox();
-        this._scene.add(this.PLAYER_HIT_BOX);
+        // this._scene.add(this.PLAYER_HIT_BOX);
 
         for(let i=0; i<10; i++){
             this.MOVING_OBJECT.push( this.generateChunk(new THREE.Vector3(0,0, i*50)) );
@@ -973,7 +1000,7 @@ class CharacterControllerDemo {
     }
 
     generateChunk(adjustment){
-        let temp_obstacle = this.generateObstacle(new THREE.Vector3(0, 0, -1*adjustment.z));
+        let temp_obstacle = GLOBAL_STATE === "PLAYING" ? this.generateObstacle(new THREE.Vector3(0, 0, -1*adjustment.z)) : {name: "EMPTY", obj: null};
         return {
             map: {
                 tiles: [
@@ -1101,7 +1128,7 @@ class CharacterControllerDemo {
                 this._previousRAF = t;
             }
 
-            if(GLOBAL_STATE != "PLAYING") return;
+            console.log("GLOBAL_STATE", GLOBAL_STATE);
             this.PLAYER_HIT_BOX.position.y = this.PLAYER_HIT_BOX.position.y + (Math.sin(t/100)/15);
             // this._scene.add(this.PLAYER_HIT_BOX);
 
@@ -1139,25 +1166,49 @@ class CharacterControllerDemo {
                     if(obs.obj != null){
                         obs.obj.forEach((obj) => {
                             obj.position.z += this.rollSpeed/10;
+                            
+                            if(GLOBAL_STATE == "PLAYING"){
+                                let curScore = Math.floor((Date.now() - this.TIME_START)/ 10)
+                                $("#alive_score").html(curScore);
+                                $("#coin_score").html(GLOBAL_COIN);
+                                if(curScore > Number($("#alive_highscore").html())) {
+                                    $("#alive_highscore").html(curScore);
+                                };
+                                if(GLOBAL_COIN > Number($("#coin_highscore").html())) {
+                                    $("#coin_highscore").html(GLOBAL_COIN)
+                                }
+
+                            }
                             if(this.detectCollisionCubes(obj, this.PLAYER_HIT_BOX)){
-                                GLOBAL_STATE = "GAME OVER";
-                                // Send ajax request to database
-    
-                                {
+                                $("#mainmenu_container").show()
+                                $("#score_container").hide()
+                                let curScore = Math.floor((Date.now() - this.TIME_START)/ 10)
+                                
+                                if(GLOBAL_STATE == "PLAYING"){
+                                    if(curScore >= Number($("#alive_highscore").html())) {
+                                        localStorage.setItem("alive_highscore", curScore);
+                                    };
+                                    if(GLOBAL_COIN >= Number($("#coin_highscore").html())) {
+                                        localStorage.setItem("coin_highscore", GLOBAL_COIN);
+                                    }
+                                    console.log("🚀 ~ file: player.js ~ line 1169 ~ CharacterControllerDemo ~ obs.obj.forEach ~", Number($("#coin_highscore").html()))
+                                    
                                     $.ajax({
                                         type: 'POST',
                                         url: "http://grafkom.nyakit.in/save.php",
                                         data: {
-                                            player_name:this.PLAYER_NAME,
-                                            coin_earned:GLOBAL_COIN,
-                                            time_alive:Date.now() - this.TIME_START
+                                            player_name: this.PLAYER_NAME,
+                                            coin_earned: GLOBAL_COIN,
+                                            time_alive: curScore
                                         },
                                         success: function(resultData) {
-                                            alert(resultData) 
+                                            console.log(resultData);
                                         }
                                     });
                                 }
-                                alert("GAME OVER!, YOUR COIN :: "+GLOBAL_COIN)
+                                GLOBAL_STATE = "GAME OVER";
+                                GLOBAL_COIN = 0;
+                                // alert("GAME OVER!, YOUR COIN :: "+GLOBAL_COIN)
                             }  
                         })    
                     }
@@ -1168,7 +1219,7 @@ class CharacterControllerDemo {
                     obs.forEach((obj) => {
                         obj.rotation.z += 0.02;
                         obj.position.z += this.rollSpeed/10;
-                        if(this.detectCollisionCubes(obj, this.PLAYER_HIT_BOX)){
+                        if(this.detectCollisionCubes(obj, this.PLAYER_HIT_BOX) && GLOBAL_STATE === "PLAYING"){
                             GLOBAL_COIN += 1;
                             console.log("KOIN", GLOBAL_COIN);
                             const audio_coin = new Audio('resources/audio/coin.mp3');
@@ -1274,6 +1325,7 @@ function randomBetween(min,max){
     else { return random}
 }
 
+let _APP = null;
 function animate () {
     let objects = [];
     let light_objects = {
@@ -1310,7 +1362,7 @@ function animate () {
 
     // Setup the camera
     const fov = 75;
-    const aspect = window.innerWidth / window.innerHeight;  // the canvas default
+    const aspect = window.innerWidth / window.innerHeight;
     const near = 0.1;
     const far = 1000;
     const camera = new THREE.PerspectiveCamera( fov, aspect , near, far );
@@ -1327,14 +1379,9 @@ function animate () {
 
     renderer.setPixelRatio( window.devicePixelRatio );
 
-    // renderer.setSize( window.innerWidth, window.innerHeight );
-    // document.body.appendChild( renderer.domElement );
-
     function updateCamera() {
         camera.updateProjectionMatrix();
     }
-
-
 
     // SET UI CONTROLNYA
     const gui = new GUI();
@@ -1374,6 +1421,14 @@ function animate () {
     let Spotlights_TOGGLE = gui.add(lightBarProps,'Spotlights').name('Spotlights').listen();
     Spotlights_TOGGLE.onChange((newValue) => {
         setLight('Spotlights', newValue)
+    });
+
+    // const minMaxGUIHelper2 = new MinMaxGUIHelper(GLOBAL_RAF, 'near', 'far', 0.1);
+    // gui.add(minMaxGUIHelper2, 'min', 0.1, 1000, 0.1).name('far').onChange(() => {});
+    // let RAF_INPUT = gui.add(GLOBAL_RAF, 'speed').name('RAF').listen();
+    gui.add(GLOBAL_RAF, 'speed').name("RAF speed").min(1).max(100).step(0.25).onChange(() => {
+        _APP.setRollSpeed(GLOBAL_RAF.speed);
+        console.log(GLOBAL_RAF);
     });
 
     // SET CAMERA CONTROLNYA
@@ -1463,44 +1518,14 @@ function animate () {
 
     setLight('DirectionalLight', true);
 
-    // buat cube sbg indikasi tempat lampunya
     {
-        // const geometry = new THREE.BoxGeometry( 1, 1, 1, 3, 3, 3);
-        // const color = generateRandomColor();
-        // const material = new THREE.MeshPhongMaterial({color: 0xd5eb34});
-        
-        // let obj = {};
-        // obj.atas_leftfront = new THREE.Mesh(geometry, material);
-        // obj.atas_leftfront.position.set(-25,50,25);
-        
-        // obj.atas_rightfront = new THREE.Mesh(geometry, material);
-        // obj.atas_rightfront.position.set(25,50,25);
-        
-        // obj.atas_leftback = new THREE.Mesh(geometry, material);
-        // obj.atas_leftback.position.set(-25,50,-25);
-        
-        // obj.atas_rightback = new THREE.Mesh(geometry, material);
-        // obj.atas_rightback.position.set(25,50,-25);
-        
-        // obj.bawah_leftfront = new THREE.Mesh(geometry, material);
-        // obj.bawah_leftfront.position.set(-30,0,30);
-
-        // obj.bawah_rightfront = new THREE.Mesh(geometry, material);
-        // obj.bawah_rightfront.position.set(30,0,30);
-        
-        // obj.bawah_leftback = new THREE.Mesh(geometry, material);
-        // obj.bawah_leftback.position.set(-30,0,-30);
-        
-        // obj.bawah_rightback = new THREE.Mesh(geometry, material);
-        // obj.bawah_rightback.position.set(30,0,-30);
-
         scene.fog = new THREE.Fog( 0x111122, 0, 400 )
 
         const material = new THREE.MeshPhongMaterial({color:0x111111});
         const far_wall = new THREE.Mesh(new THREE.BoxGeometry(200, 400, 0.5), material);
         const left_wall = new THREE.Mesh(new THREE.BoxGeometry(500, 250, 0.5), material);
         const right_wall = new THREE.Mesh(new THREE.BoxGeometry(500, 250, 0.5), material);
-                
+        
         far_wall.position.set(0, 125,-45*10);
         left_wall.position.set(90, 125, -200);
         left_wall.rotation.y = Math.PI * -.5;
@@ -1509,15 +1534,6 @@ function animate () {
         scene.add(far_wall);
         scene.add(left_wall);
         scene.add(right_wall);
-        // scene.add(obj.atas_leftfront);
-        // scene.add(obj.atas_rightfront);
-        // scene.add(obj.atas_leftback);
-        // scene.add(obj.atas_rightback);
-
-        // scene.add(obj.bawah_leftfront);
-        // scene.add(obj.bawah_rightfront);
-        // scene.add(obj.bawah_leftback);
-        // scene.add(obj.bawah_rightback);
     }
     
     // Lantai-nya
@@ -1542,14 +1558,37 @@ function animate () {
         scene.add(mesh);
     }
 
-    let _APP = null;
-
     window.addEventListener('DOMContentLoaded', () => {
         _APP = new CharacterControllerDemo(renderer, scene, camera);
+        _APP.setRollSpeed(GLOBAL_RAF.speed);
     });
 
-    const audio_coin = new Audio('resources/audio/soundtrack.mp3');
-    audio_coin.play();
+
 };
 
 animate();
+
+$(document).ready(() => {
+    $('#btn-start').on('click', () => {
+        // audio_soundtrack.stop();
+        audio_soundtrack.play();
+
+        if(localStorage.getItem("coin_highscore")) {
+            $("#coin_highscore").html(localStorage.getItem("coin_highscore"))
+        } else {
+            $("#coin_highscore").html("0");
+        }
+        if(localStorage.getItem("alive_highscore")) {
+            $("#alive_highscore").html(localStorage.getItem("alive_highscore"))
+        } else {
+            $("#alive_highscore").html("0");
+        }
+        startGame();
+        $('#mainmenu_container').hide();
+        $('#score_container').show();
+    })
+})
+
+function startGame() {
+    _APP.startGame();
+}
